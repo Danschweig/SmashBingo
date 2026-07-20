@@ -5,6 +5,6 @@
 export const firebaseConfig = {
   apiKey: "AIzaSyAO9jG_4OYCw6FKjsN4RBnr3P1vcpinUBk",
   authDomain: "smashbingo.firebaseapp.com",
-  projectId: "1041568068487",
+  projectId: "smashbingo",
   appId: "1:1041568068487:web:ab922201ab750cc7799922",
 };
