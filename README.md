@@ -40,3 +40,7 @@ python -m http.server 8080
 ```
 
 Danach `http://localhost:8080` im Browser öffnen. Das direkte Öffnen als `file://` funktioniert im lokalen Modus, Browser können dort aber JavaScript-Module blockieren; ein Webserver ist daher empfohlen.
+
+## GitHub-Pages-Cache zurücksetzen
+
+Falls die veröffentlichte Seite nach einem Update schwarz bleibt oder alte Dateien lädt, ist meist noch ein alter Service Worker im Browser aktiv. Lade die Seite einmal hart neu (`Strg` + `F5`) oder lösche in den Browser-Entwicklertools unter **Application → Service Workers** die Registrierung für die GitHub-Pages-Seite.
