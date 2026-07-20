@@ -3,8 +3,8 @@
 // Die Firebase-Web-Konfiguration darf in einem öffentlichen Frontend stehen;
 // der Zugriff wird über die Firestore-Regeln begrenzt.
 export const firebaseConfig = {
-  apiKey: "HIER_API_KEY_EINTRAGEN",
-  authDomain: "HIER_PROJECT_ID.firebaseapp.com",
-  projectId: "HIER_PROJECT_ID",
-  appId: "HIER_APP_ID_EINTRAGEN",
+  apiKey: "AIzaSyAO9jG_4OYCw6FKjsN4RBnr3P1vcpinUBk",
+  authDomain: "smashbingo.firebaseapp.com",
+  projectId: "1041568068487",
+  appId: "1:1041568068487:web:ab922201ab750cc7799922",
 };
