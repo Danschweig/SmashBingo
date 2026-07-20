@@ -1,4 +1,4 @@
-const CACHE_NAME = "smash-bingo-v2";
+const CACHE_NAME = "smash-bingo-v3";
 const APP_FILES = [
   "./",
   "index.html",
