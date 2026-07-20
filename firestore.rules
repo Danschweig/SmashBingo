@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Öffentlicher, auf genau ein Dokument begrenzter Pool für die private Bingo-Seite.
+    // Für eine öffentlich beworbene App sollte der Schreibzugriff zusätzlich per
+    // Firebase Authentication eingeschränkt werden.
+    match /smashBingo/sharedPool {
+      allow get: if true;
+      allow list, delete: if false;
+
+      allow create: if validPool();
+      allow update: if validPool()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fields', 'updatedAt']);
+
+      function validPool() {
+        return request.resource.data.keys().hasOnly(['fields', 'updatedAt'])
+          && request.resource.data.fields is list
+          && request.resource.data.fields.size() <= 200
+          && request.resource.data.updatedAt is timestamp;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

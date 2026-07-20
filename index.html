@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#6d38f4" />
+    <meta name="description" content="Erstelle zufällige Smash-Bingo-Boards aus eurem gemeinsamen Pool." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Board · Smash Bingo</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="index.html" aria-label="Smash Bingo – Board">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span>
+          <strong>Smash</strong>
+          <small>Bingo Night</small>
+        </span>
+      </a>
+
+      <nav class="main-nav" aria-label="Hauptnavigation">
+        <a class="is-active" href="index.html" aria-current="page">Board</a>
+        <a href="pool.html">Pool</a>
+      </nav>
+
+      <div class="field-counter" aria-label="Anzahl verfügbarer Felder">
+        <strong id="headerCount">–</strong>
+        <span>Felder im Pool</span>
+      </div>
+    </header>
+
+    <main class="app-shell board-page">
+      <section class="hero compact-hero" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">READY TO BRAWL?</p>
+          <h1 id="pageTitle">Euer Match.<br /><em>Euer Bingo.</em></h1>
+          <p class="hero-copy">Mischt den gemeinsamen Pool und macht aus jeder Runde ein Event.</p>
+        </div>
+        <div class="hero-badge" aria-hidden="true">
+          <span>★</span>
+          <strong>LET'S<br />GO!</strong>
+        </div>
+      </section>
+
+      <section class="board-panel board-only-panel" aria-labelledby="boardHeading">
+        <div class="panel-heading board-heading">
+          <div>
+            <p class="step-label"><span>01</span> Spielbrett</p>
+            <h2 id="boardHeading">Bingo Board</h2>
+          </div>
+          <div class="size-switch" aria-label="Größe des Spielbretts">
+            <button class="size-option is-active" type="button" data-size="4" aria-pressed="true">4 × 4</button>
+            <button class="size-option" type="button" data-size="5" aria-pressed="false">5 × 5</button>
+          </div>
+        </div>
+
+        <div id="boardEmpty" class="board-empty">
+          <div class="empty-icon" aria-hidden="true">✦</div>
+          <h3>Bereit für die nächste Runde?</h3>
+          <p>Wähle eine Größe und mische euren Pool zu einem neuen Board.</p>
+        </div>
+        <div id="bingoBoard" class="bingo-board" aria-label="Bingo Board" hidden></div>
+
+        <div id="boardStatus" class="board-status" role="status" aria-live="polite"></div>
+        <button id="generateButton" class="primary-button" type="button">
+          <span aria-hidden="true">↻</span>
+          Neues Board mischen
+        </button>
+        <div class="board-footer">
+          <p class="tip"><span aria-hidden="true">●</span> Tippe auf ein Feld, um es abzuhaken.</p>
+          <a class="manage-link" href="pool.html">Pool bearbeiten →</a>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="board.js"></script>
+  </body>
+</html>

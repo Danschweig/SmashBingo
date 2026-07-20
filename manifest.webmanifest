@@ -1,0 +1,32 @@
+{
+  "name": "Smash Bingo Night",
+  "short_name": "Smash Bingo",
+  "description": "Zufällige Bingo-Boards für eure Smash-Runden.",
+  "lang": "de",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f5fb",
+  "theme_color": "#6d38f4",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Neues Board",
+      "short_name": "Board",
+      "url": "index.html",
+      "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Felder-Pool",
+      "short_name": "Pool",
+      "url": "pool.html",
+      "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ]
+}

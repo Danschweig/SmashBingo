@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#6d38f4" />
+    <meta name="description" content="Verwalte den gemeinsamen Feld-Pool für Smash Bingo." />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <title>Pool · Smash Bingo</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="brand" href="index.html" aria-label="Smash Bingo – Board">
+        <span class="brand-mark" aria-hidden="true"><span></span></span>
+        <span>
+          <strong>Smash</strong>
+          <small>Bingo Night</small>
+        </span>
+      </a>
+
+      <nav class="main-nav" aria-label="Hauptnavigation">
+        <a href="index.html">Board</a>
+        <a class="is-active" href="pool.html" aria-current="page">Pool</a>
+      </nav>
+
+      <div class="field-counter" aria-label="Anzahl gespeicherter Felder">
+        <strong id="headerCount">–</strong>
+        <span>Felder im Pool</span>
+      </div>
+    </header>
+
+    <main class="app-shell pool-page">
+      <section class="pool-intro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">EURE REGELN</p>
+          <h1 id="pageTitle">Gemeinsamer<br /><em>Felder-Pool.</em></h1>
+          <p>Alles, was ihr hier ändert, erscheint bei aktivierter Cloud-Synchronisierung automatisch auf den anderen Geräten.</p>
+        </div>
+        <a class="back-to-board" href="index.html">Zum Board <span>→</span></a>
+      </section>
+
+      <section class="pool-panel pool-only-panel" aria-labelledby="poolHeading">
+        <div class="panel-heading">
+          <div>
+            <p class="step-label"><span>02</span> Euer Pool</p>
+            <h2 id="poolHeading">Bingo-Felder</h2>
+          </div>
+          <span id="poolBadge" class="pool-badge">0</span>
+        </div>
+
+        <div id="syncNotice" class="sync-notice is-connecting" role="status" aria-live="polite">
+          <span class="sync-dot" aria-hidden="true"></span>
+          <div>
+            <strong id="syncTitle">Speicher wird verbunden …</strong>
+            <p id="syncText">Einen Moment bitte.</p>
+          </div>
+        </div>
+
+        <form id="fieldForm" class="add-form">
+          <label class="sr-only" for="fieldInput">Neues Bingo-Feld</label>
+          <input
+            id="fieldInput"
+            name="field"
+            type="text"
+            maxlength="80"
+            autocomplete="off"
+            placeholder="z. B. Jemand fällt erbärmlich runter"
+            required
+          />
+          <button type="submit" aria-label="Feld hinzufügen">+</button>
+        </form>
+        <p id="formError" class="form-error" role="alert"></p>
+
+        <div class="pool-toolbar">
+          <span>Gespeicherte Felder</span>
+          <button id="resetButton" class="text-button" type="button">Beispiele laden</button>
+        </div>
+        <ul id="fieldList" class="field-list expanded-list" aria-label="Gespeicherte Bingo-Felder"></ul>
+        <div id="listEmpty" class="list-empty" hidden>Noch keine Felder im Pool. Leg oben das erste an!</div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="pool.js"></script>
+  </body>
+</html>
