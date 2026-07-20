@@ -213,7 +213,9 @@ function renderBoard() {
   elements.board.hidden = false;
   elements.boardEmpty.hidden = true;
   elements.board.dataset.size = boardSize;
-  elements.board.style.gridTemplateColumns = `repeat(${boardSize}, 1fr)`;
+  const boardTracks = `repeat(${boardSize}, minmax(0, 1fr))`;
+  elements.board.style.gridTemplateColumns = boardTracks;
+  elements.board.style.gridTemplateRows = boardTracks;
 
   currentBoard.forEach((field, index) => {
     const cell = document.createElement("button");

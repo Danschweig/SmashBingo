@@ -613,9 +613,11 @@ button {
   transition: filter 130ms ease, transform 130ms ease, background 130ms ease;
 }
 
-.bingo-cell:hover {
-  filter: brightness(1.06);
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .bingo-cell:hover {
+    filter: brightness(1.06);
+    transform: translateY(-2px);
+  }
 }
 
 .bingo-cell.is-marked {
