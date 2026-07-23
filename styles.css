@@ -378,15 +378,18 @@ button {
   line-height: 0.8;
 }
 
-.board-only-panel {
+.board-only-panel,
+.tier-list-panel {
   width: min(850px, 100%);
+  max-width: 100%;
+  min-width: 0;
   margin: 0 auto;
 }
 
 .tier-list-panel {
-  width: min(850px, 100%);
   margin: 38px auto 0;
   padding: 25px;
+  overflow: hidden;
   background: var(--ink);
   border-top: 6px solid var(--red);
   box-shadow: 12px 14px 0 rgba(216, 11, 32, 0.22), 0 25px 55px rgba(0, 0, 0, 0.24);
@@ -395,10 +398,16 @@ button {
 
 .tier-list-heading {
   display: flex;
+  max-width: 100%;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 18px;
   color: white;
+}
+
+.tier-list-heading > div {
+  min-width: 0;
 }
 
 .tier-list-heading .step-label {
@@ -428,11 +437,18 @@ button {
 }
 
 .tier-list-figure {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
+  overflow: hidden;
 }
 
 .tier-list-image {
   display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   background: #302132;
   border: 1px solid #4c4c53;
@@ -441,12 +457,16 @@ button {
 .tier-list-figure img {
   display: block;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: auto;
-  transition: filter 160ms ease, transform 160ms ease;
+  object-fit: contain;
 }
 
 .tier-list-figure figcaption {
+  max-width: 100%;
   margin-top: 11px;
+  overflow-wrap: anywhere;
   color: #aaaab0;
   font-size: 0.72rem;
   line-height: 1.45;
@@ -1422,6 +1442,9 @@ button {
   }
 
   .tier-list-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
     margin-top: 24px;
     padding: 15px;
     border-top-width: 5px;
@@ -1430,6 +1453,7 @@ button {
   }
 
   .tier-list-heading {
+    gap: 10px;
     margin-bottom: 13px;
   }
 
