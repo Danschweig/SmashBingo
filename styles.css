@@ -1020,7 +1020,7 @@ button {
   transform: skew(-14deg);
 }
 
-.field-item span {
+.field-text {
   min-width: 0;
   flex: 1;
   font-size: 0.86rem;
@@ -1028,6 +1028,13 @@ button {
   overflow-wrap: anywhere;
 }
 
+.field-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.edit-button,
 .delete-button {
   display: grid;
   width: 34px;
@@ -1040,10 +1047,71 @@ button {
   transition: color 130ms ease, background 130ms ease;
 }
 
+.edit-button:hover {
+  color: var(--ink);
+  background: var(--gold);
+  transform: skew(-6deg);
+}
+
 .delete-button:hover {
   color: white;
   background: var(--red);
   transform: skew(-6deg);
+}
+
+.field-item.is-editing {
+  padding-right: 4px;
+}
+
+.edit-field-form {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  gap: 5px;
+}
+
+.edit-field-input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: white;
+  border: 2px solid var(--red);
+  outline: none;
+}
+
+.edit-field-input:focus {
+  box-shadow: 3px 3px 0 rgba(216, 11, 32, 0.18);
+}
+
+.edit-save-button,
+.edit-cancel-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  color: white;
+  font-weight: 900;
+  border: 0;
+}
+
+.edit-save-button {
+  background: var(--success);
+}
+
+.edit-cancel-button {
+  background: var(--ink);
+}
+
+.edit-save-button:hover {
+  filter: brightness(1.1);
+}
+
+.edit-cancel-button:hover {
+  background: var(--red);
 }
 
 .list-empty {
@@ -1153,6 +1221,10 @@ button {
 }
 
 .restore-button:disabled,
+.edit-button:disabled,
+.edit-field-input:disabled,
+.edit-save-button:disabled,
+.edit-cancel-button:disabled,
 .delete-button:disabled {
   cursor: wait;
   opacity: 0.55;

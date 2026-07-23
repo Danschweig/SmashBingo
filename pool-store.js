@@ -204,6 +204,29 @@ export function createPoolStore() {
             fields: firestore.arrayRemove(field),
             updatedAt: firestore.serverTimestamp(),
           }),
+        replace: (oldField, newField) =>
+          firestore.runTransaction(db, async (transaction) => {
+            const documentSnapshot = await transaction.get(poolReference);
+            const remoteFields = documentSnapshot.data()?.fields;
+            if (!Array.isArray(remoteFields)) throw new Error("Der gemeinsame Pool konnte nicht geladen werden.");
+
+            const fieldIndex = remoteFields.indexOf(oldField);
+            if (fieldIndex === -1) throw new Error("Dieses Feld wurde zwischenzeitlich gelöscht.");
+
+            const duplicateExists = remoteFields.some(
+              (item, index) =>
+                index !== fieldIndex &&
+                item.localeCompare(newField, "de", { sensitivity: "base" }) === 0,
+            );
+            if (duplicateExists) throw new Error("Dieses Feld ist bereits im Pool.");
+
+            const nextFields = [...remoteFields];
+            nextFields[fieldIndex] = newField;
+            transaction.update(poolReference, {
+              fields: nextFields,
+              updatedAt: firestore.serverTimestamp(),
+            });
+          }),
         addMany: (items) =>
           firestore.updateDoc(poolReference, {
             fields: firestore.arrayUnion(...items),
@@ -293,6 +316,33 @@ export function createPoolStore() {
         storeLocal(fields.filter((item) => item !== field));
       }
       rememberDeletedField(field);
+    },
+
+    async updateField(oldField, value) {
+      await ready;
+      const newField = normalizeField(value);
+      if (!newField) throw new Error("Bitte gib einen Text für das Feld ein.");
+      if (newField.length > 80) throw new Error("Ein Feld darf höchstens 80 Zeichen lang sein.");
+
+      const fieldIndex = fields.indexOf(oldField);
+      if (fieldIndex === -1) throw new Error("Dieses Feld wurde zwischenzeitlich gelöscht.");
+
+      const duplicateExists = fields.some(
+        (item, index) =>
+          index !== fieldIndex &&
+          item.localeCompare(newField, "de", { sensitivity: "base" }) === 0,
+      );
+      if (duplicateExists) throw new Error("Dieses Feld ist bereits im Pool.");
+      if (newField === oldField) return newField;
+
+      if (remoteActions) {
+        await remoteActions.replace(oldField, newField);
+      } else {
+        const nextFields = [...fields];
+        nextFields[fieldIndex] = newField;
+        storeLocal(nextFields);
+      }
+      return newField;
     },
 
     async restoreField(field) {

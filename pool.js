@@ -21,6 +21,9 @@ const elements = {
 
 let fields = [];
 let deletedFields = [];
+let editingField = null;
+let syncMode = "connecting";
+let isBusy = false;
 let toastTimer;
 
 function renderFields() {
@@ -33,8 +36,55 @@ function renderFields() {
     const item = document.createElement("li");
     item.className = "field-item";
 
+    if (field === editingField) {
+      item.classList.add("is-editing");
+
+      const editForm = document.createElement("form");
+      editForm.className = "edit-field-form";
+      editForm.dataset.field = field;
+
+      const editInput = document.createElement("input");
+      editInput.className = "edit-field-input";
+      editInput.type = "text";
+      editInput.maxLength = 80;
+      editInput.value = field;
+      editInput.required = true;
+      editInput.setAttribute("aria-label", `„${field}“ bearbeiten`);
+
+      const save = document.createElement("button");
+      save.className = "edit-save-button";
+      save.type = "submit";
+      save.textContent = "✓";
+      save.title = "Änderung speichern";
+      save.setAttribute("aria-label", "Änderung speichern");
+
+      const cancel = document.createElement("button");
+      cancel.className = "edit-cancel-button";
+      cancel.type = "button";
+      cancel.textContent = "✕";
+      cancel.title = "Bearbeitung abbrechen";
+      cancel.setAttribute("aria-label", "Bearbeitung abbrechen");
+
+      editForm.append(editInput, save, cancel);
+      item.append(editForm);
+      elements.list.append(item);
+      return;
+    }
+
     const text = document.createElement("span");
+    text.className = "field-text";
     text.textContent = field;
+
+    const actions = document.createElement("div");
+    actions.className = "field-actions";
+
+    const edit = document.createElement("button");
+    edit.className = "edit-button";
+    edit.type = "button";
+    edit.dataset.field = field;
+    edit.setAttribute("aria-label", `„${field}“ bearbeiten`);
+    edit.title = "Feld bearbeiten";
+    edit.innerHTML = "&#9998;";
 
     const remove = document.createElement("button");
     remove.className = "delete-button";
@@ -44,9 +94,12 @@ function renderFields() {
     remove.title = "Feld löschen";
     remove.innerHTML = "&#10005;";
 
-    item.append(text, remove);
+    actions.append(edit, remove);
+    item.append(text, actions);
     elements.list.append(item);
   });
+
+  updateInteractiveState();
 }
 
 function formatRemainingTime(expiresAt) {
@@ -94,6 +147,7 @@ function renderDeletedFields() {
 }
 
 function renderSyncState(mode, detail) {
+  syncMode = mode;
   elements.syncNotice.className = `sync-notice is-${mode}`;
   const content = {
     connecting: ["Cloud wird verbunden …", detail],
@@ -104,26 +158,26 @@ function renderSyncState(mode, detail) {
 
   elements.syncTitle.textContent = content[0];
   elements.syncText.textContent = content[1];
-  const isConnecting = mode === "connecting";
-  elements.input.disabled = isConnecting;
-  elements.submitButton.disabled = isConnecting;
-  elements.list.querySelectorAll(".delete-button").forEach((button) => {
-    button.disabled = isConnecting;
-  });
+  updateInteractiveState();
+}
+
+function updateInteractiveState() {
+  const disabled = isBusy || syncMode === "connecting";
+  elements.input.disabled = disabled;
+  elements.submitButton.disabled = disabled;
+  elements.list
+    .querySelectorAll(".delete-button, .edit-button, .edit-field-input, .edit-save-button, .edit-cancel-button")
+    .forEach((control) => {
+      control.disabled = disabled;
+    });
   elements.deletedList.querySelectorAll(".restore-button").forEach((button) => {
-    button.disabled = isConnecting;
+    button.disabled = disabled;
   });
 }
 
-function setBusy(isBusy) {
-  elements.input.disabled = isBusy;
-  elements.submitButton.disabled = isBusy;
-  elements.list.querySelectorAll(".delete-button").forEach((button) => {
-    button.disabled = isBusy;
-  });
-  elements.deletedList.querySelectorAll(".restore-button").forEach((button) => {
-    button.disabled = isBusy;
-  });
+function setBusy(nextIsBusy) {
+  isBusy = nextIsBusy;
+  updateInteractiveState();
 }
 
 function showToast(message) {
@@ -158,6 +212,25 @@ elements.form.addEventListener("submit", async (event) => {
 });
 
 elements.list.addEventListener("click", async (event) => {
+  const editButton = event.target.closest(".edit-button");
+  if (editButton) {
+    editingField = editButton.dataset.field;
+    elements.formError.textContent = "";
+    renderFields();
+    const editInput = elements.list.querySelector(".edit-field-input");
+    editInput?.focus();
+    editInput?.select();
+    return;
+  }
+
+  const cancelButton = event.target.closest(".edit-cancel-button");
+  if (cancelButton) {
+    editingField = null;
+    elements.formError.textContent = "";
+    renderFields();
+    return;
+  }
+
   const button = event.target.closest(".delete-button");
   if (!button) return;
 
@@ -168,6 +241,26 @@ elements.list.addEventListener("click", async (event) => {
   } catch (error) {
     button.disabled = false;
     elements.formError.textContent = error.message;
+  }
+});
+
+elements.list.addEventListener("submit", async (event) => {
+  const editForm = event.target.closest(".edit-field-form");
+  if (!editForm) return;
+
+  event.preventDefault();
+  const editInput = editForm.querySelector(".edit-field-input");
+  elements.formError.textContent = "";
+  setBusy(true);
+  try {
+    const updatedField = await store.updateField(editForm.dataset.field, editInput.value);
+    editingField = null;
+    showToast(`„${updatedField}“ aktualisiert`);
+  } catch (error) {
+    elements.formError.textContent = error.message;
+  } finally {
+    setBusy(false);
+    if (editingField) editInput.focus();
   }
 });
 
