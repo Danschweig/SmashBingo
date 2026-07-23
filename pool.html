@@ -75,10 +75,20 @@
 
         <div class="pool-toolbar">
           <span>Gespeicherte Felder</span>
-          <button id="resetButton" class="text-button" type="button">Beispiele laden</button>
         </div>
         <ul id="fieldList" class="field-list expanded-list" aria-label="Gespeicherte Bingo-Felder"></ul>
         <div id="listEmpty" class="list-empty" hidden>Noch keine Felder im Pool. Leg oben das erste an!</div>
+
+        <section id="deletedFieldsPanel" class="deleted-fields-panel" aria-labelledby="deletedFieldsHeading" hidden>
+          <div class="deleted-fields-heading">
+            <div>
+              <h3 id="deletedFieldsHeading">Kürzlich gelöscht</h3>
+              <p>Auf diesem Gerät 5 Minuten lang wiederherstellbar.</p>
+            </div>
+            <span id="deletedFieldsBadge" class="deleted-fields-badge" aria-label="Anzahl wiederherstellbarer Felder">0</span>
+          </div>
+          <ul id="deletedFieldList" class="deleted-field-list" aria-label="Wiederherstellbare Bingo-Felder"></ul>
+        </section>
       </section>
     </main>
 

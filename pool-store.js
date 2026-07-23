@@ -1,6 +1,8 @@
 import { firebaseConfig } from "./firebase-config.js";
 
 const STORAGE_KEY = "smash-bingo-fields-v1";
+const DELETED_FIELDS_KEY = "smash-bingo-deleted-fields-v1";
+const RESTORE_WINDOW_MS = 5 * 60 * 1000;
 const FIREBASE_VERSION = "12.16.0";
 
 export const starterFields = [
@@ -58,6 +60,25 @@ function loadLocalFields() {
   }
 }
 
+function loadDeletedFields() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DELETED_FIELDS_KEY));
+    const now = Date.now();
+    return Array.isArray(saved)
+      ? saved.filter(
+          (item) =>
+            item &&
+            typeof item.field === "string" &&
+            Number.isFinite(item.deletedAt) &&
+            item.deletedAt <= now &&
+            item.deletedAt + RESTORE_WINDOW_MS > now,
+        )
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 function firebaseIsConfigured() {
   return Boolean(
     firebaseConfig.apiKey &&
@@ -75,13 +96,23 @@ function normalizeField(value) {
 
 export function createPoolStore() {
   let fields = loadLocalFields();
+  let deletedFields = loadDeletedFields();
   let mode = firebaseIsConfigured() ? "connecting" : "local";
   let detail = mode === "local" ? "Firebase ist noch nicht eingerichtet." : "Verbindung zu Firestore wird aufgebaut.";
   let remoteActions = null;
+  let deletedFieldsTimer;
   const listeners = new Set();
 
   function snapshot() {
-    return { fields: [...fields], mode, detail };
+    return {
+      fields: [...fields],
+      deletedFields: deletedFields.map((item) => ({
+        ...item,
+        expiresAt: item.deletedAt + RESTORE_WINDOW_MS,
+      })),
+      mode,
+      detail,
+    };
   }
 
   function notify() {
@@ -93,6 +124,49 @@ export function createPoolStore() {
     fields = [...nextFields];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fields));
     notify();
+  }
+
+  function scheduleDeletedFieldsCleanup() {
+    window.clearTimeout(deletedFieldsTimer);
+    if (!deletedFields.length) return;
+
+    const nextExpiry = Math.min(...deletedFields.map((item) => item.deletedAt + RESTORE_WINDOW_MS));
+    deletedFieldsTimer = window.setTimeout(cleanupDeletedFields, Math.max(0, nextExpiry - Date.now()) + 50);
+  }
+
+  function storeDeletedFields(nextDeletedFields) {
+    deletedFields = [...nextDeletedFields];
+    if (deletedFields.length) {
+      localStorage.setItem(DELETED_FIELDS_KEY, JSON.stringify(deletedFields));
+    } else {
+      localStorage.removeItem(DELETED_FIELDS_KEY);
+    }
+    scheduleDeletedFieldsCleanup();
+    notify();
+  }
+
+  function cleanupDeletedFields() {
+    const now = Date.now();
+    const activeDeletedFields = deletedFields.filter(
+      (item) => item.deletedAt + RESTORE_WINDOW_MS > now,
+    );
+
+    if (activeDeletedFields.length !== deletedFields.length) {
+      storeDeletedFields(activeDeletedFields);
+    } else {
+      scheduleDeletedFieldsCleanup();
+    }
+  }
+
+  function rememberDeletedField(field) {
+    storeDeletedFields([
+      ...deletedFields.filter((item) => item.field !== field),
+      { field, deletedAt: Date.now() },
+    ]);
+  }
+
+  function forgetDeletedField(field) {
+    storeDeletedFields(deletedFields.filter((item) => item.field !== field));
   }
 
   async function connectFirebase() {
@@ -173,7 +247,14 @@ export function createPoolStore() {
       fields = loadLocalFields();
       notify();
     }
+    if (event.key === DELETED_FIELDS_KEY) {
+      deletedFields = loadDeletedFields();
+      scheduleDeletedFieldsCleanup();
+      notify();
+    }
   });
+
+  scheduleDeletedFieldsCleanup();
 
   return {
     ready,
@@ -204,11 +285,41 @@ export function createPoolStore() {
 
     async removeField(field) {
       await ready;
+      if (!fields.includes(field)) return;
+
       if (remoteActions) {
         await remoteActions.remove(field);
       } else {
         storeLocal(fields.filter((item) => item !== field));
       }
+      rememberDeletedField(field);
+    },
+
+    async restoreField(field) {
+      await ready;
+      cleanupDeletedFields();
+
+      const deletedField = deletedFields.find((item) => item.field === field);
+      if (!deletedField) throw new Error("Die 5-Minuten-Frist für dieses Feld ist abgelaufen.");
+
+      const alreadyExists = fields.some(
+        (item) => item.localeCompare(field, "de", { sensitivity: "base" }) === 0,
+      );
+      if (alreadyExists) {
+        forgetDeletedField(field);
+        return field;
+      }
+      if (fields.length >= 200) {
+        throw new Error("Der Pool kann höchstens 200 Felder enthalten.");
+      }
+
+      if (remoteActions) {
+        await remoteActions.add(field);
+      } else {
+        storeLocal([...fields, field]);
+      }
+      forgetDeletedField(field);
+      return field;
     },
 
     async addExamples() {

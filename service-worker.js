@@ -1,4 +1,4 @@
-const CACHE_NAME = "smash-bingo-v4";
+const CACHE_NAME = "smash-bingo-v5";
 const APP_FILES = [
   "./",
   "index.html",
@@ -10,6 +10,7 @@ const APP_FILES = [
   "firebase-config.js",
   "manifest.webmanifest",
   "icon.svg",
+  "assets/smash-ultimate-tier-list-2026.png",
 ];
 
 self.addEventListener("install", (event) => {

@@ -383,6 +383,81 @@ button {
   margin: 0 auto;
 }
 
+.tier-list-panel {
+  width: min(850px, 100%);
+  margin: 38px auto 0;
+  padding: 25px;
+  background: var(--ink);
+  border-top: 6px solid var(--red);
+  box-shadow: 12px 14px 0 rgba(216, 11, 32, 0.22), 0 25px 55px rgba(0, 0, 0, 0.24);
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+}
+
+.tier-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  color: white;
+}
+
+.tier-list-heading .step-label {
+  color: #aaaab0;
+}
+
+.tier-list-heading h2 {
+  margin: 0;
+  font-family: "Barlow Condensed", Impact, sans-serif;
+  font-size: 2rem;
+  font-style: italic;
+  font-weight: 900;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.tier-list-edition {
+  padding: 8px 12px;
+  color: var(--ink);
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  font-weight: 900;
+  background: var(--gold);
+  box-shadow: 4px 4px 0 var(--red);
+  transform: skew(-7deg);
+}
+
+.tier-list-figure {
+  margin: 0;
+}
+
+.tier-list-image {
+  display: block;
+  overflow: hidden;
+  background: #302132;
+  border: 1px solid #4c4c53;
+}
+
+.tier-list-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+  transition: filter 160ms ease, transform 160ms ease;
+}
+
+.tier-list-figure figcaption {
+  margin-top: 11px;
+  color: #aaaab0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.tier-list-figure figcaption a {
+  color: var(--gold);
+  font-weight: 700;
+}
+
 .pool-page {
   width: min(900px, calc(100% - 48px));
 }
@@ -979,6 +1054,110 @@ button {
   text-align: center;
 }
 
+.deleted-fields-panel {
+  margin-top: 26px;
+  padding: 17px;
+  background: #ededee;
+  border-left: 5px solid var(--gold);
+}
+
+.deleted-fields-heading {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.deleted-fields-heading h3 {
+  margin: 0;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.deleted-fields-heading p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.deleted-fields-badge {
+  display: grid;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 8px;
+  place-items: center;
+  color: var(--ink);
+  font-family: "Barlow Condensed", sans-serif;
+  font-weight: 900;
+  background: var(--gold);
+  transform: skew(-7deg);
+}
+
+.deleted-field-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.deleted-field-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.deleted-field-item > div {
+  min-width: 0;
+}
+
+.deleted-field-item span {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.restore-countdown {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.restore-button {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  color: white;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 0.75rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--ink);
+  border: 0;
+  box-shadow: inset 0 -3px 0 rgba(255, 255, 255, 0.12);
+  transform: skew(-5deg);
+}
+
+.restore-button:hover {
+  color: var(--ink);
+  background: var(--gold);
+}
+
+.restore-button:disabled,
+.delete-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
 .toast {
   position: fixed;
   z-index: 10;
@@ -1170,6 +1349,27 @@ button {
     clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 13px 100%, 0 calc(100% - 13px));
   }
 
+  .tier-list-panel {
+    margin-top: 24px;
+    padding: 15px;
+    border-top-width: 5px;
+    box-shadow: 7px 8px 0 rgba(216, 11, 32, 0.22);
+    clip-path: polygon(0 0, calc(100% - 13px) 0, 100% 13px, 100% 100%, 13px 100%, 0 calc(100% - 13px));
+  }
+
+  .tier-list-heading {
+    margin-bottom: 13px;
+  }
+
+  .tier-list-heading h2 {
+    font-size: 1.5rem;
+  }
+
+  .tier-list-edition {
+    padding: 6px 9px;
+    font-size: 0.9rem;
+  }
+
   .panel-heading {
     margin-bottom: 18px;
     padding-bottom: 11px;
@@ -1228,6 +1428,19 @@ button {
 
   .text-button {
     flex: 0 0 auto;
+  }
+
+  .deleted-fields-panel {
+    padding: 14px 12px;
+  }
+
+  .deleted-field-item {
+    align-items: flex-start;
+  }
+
+  .restore-button {
+    padding: 7px 8px;
+    font-size: 0.7rem;
   }
 
   .toast {
