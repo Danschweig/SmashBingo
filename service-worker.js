@@ -1,4 +1,4 @@
-const CACHE_NAME = "smash-bingo-v8";
+const CACHE_NAME = "smash-bingo-v10";
 const APP_FILES = [
   "./",
   "index.html",
@@ -11,6 +11,7 @@ const APP_FILES = [
   "manifest.webmanifest",
   "icon.svg",
   "assets/smash-ultimate-tier-list-2026.png",
+  "assets/triple-bingo.mp3",
 ];
 
 self.addEventListener("install", (event) => {

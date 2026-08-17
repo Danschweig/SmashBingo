@@ -1356,12 +1356,6 @@ button {
   clip-path: inset(50%);
 }
 
-.triple-bingo-sound iframe {
-  width: 1px;
-  height: 1px;
-  border: 0;
-}
-
 .deleted-fields-heading {
   display: flex;
   gap: 16px;

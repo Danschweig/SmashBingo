@@ -27,7 +27,7 @@ Ohne Firebase-Konfiguration läuft sie automatisch im lokalen Modus. Auf der Poo
 
 Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln erlauben ausschließlich den Zugriff auf das Pool-Dokument, begrenzen den normalen Pool auf 200 sowie den Bonus-Pool auf 100 Einträge und verbieten das Löschen des Dokuments. Nach diesem Update müssen die geänderten Regeln erneut in der Firebase Console veröffentlicht werden, bevor der Bonus-Pool cloud-synchronisiert werden kann.
 
-Der Sound bei drei gleichzeitigen Bingo-Linien wird über den vorgegebenen YouTube-Link im datenschutzfreundlichen Embed geladen. Dafür ist eine Internetverbindung nötig; eine lokale MP3-Datei ist nicht erforderlich.
+Der Sound bei drei gleichzeitigen Bingo-Linien wird aus `assets/triple-bingo.mp3` abgespielt und vom Service Worker für die Offline-Nutzung zwischengespeichert.
 
 ### Sicherheitshinweis
 

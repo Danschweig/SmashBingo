@@ -2,9 +2,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Öffentlicher, auf genau ein Dokument begrenzter Pool für die private Bingo-Seite.
-    // Für eine öffentlich beworbene App sollte der Schreibzugriff zusätzlich per
-    // Firebase Authentication eingeschränkt werden.
+    // Gemeinsamer Bingo-Pool inklusive optionalem Bonus-Pool.
     match /smashBingo/sharedPool {
       allow get: if true;
       allow list, delete: if false;
@@ -25,6 +23,59 @@ service cloud.firestore {
       }
     }
 
+    // Gemeinsame Schafkopf-Räume.
+    match /schafkopfRooms/{roomId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function validRoomCode() {
+        return roomId.matches('^[A-Z2-9]{5}$');
+      }
+
+      function validRoomDocument() {
+        return request.resource.data.keys().hasOnly([
+          'schemaVersion',
+          'ownerId',
+          'state',
+          'revision',
+          'createdAt',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.state is map
+        && request.resource.data.revision is int
+        && request.resource.data.revision > 0
+        && request.resource.data.ownerId is string
+        && request.resource.data.updatedBy == request.auth.uid;
+      }
+
+      allow create: if signedIn()
+        && validRoomCode()
+        && validRoomDocument()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Ein Raum kann nur mit bekanntem Raumcode geöffnet werden.
+      // Das Auflisten aller Räume bleibt gesperrt.
+      allow get: if signedIn() && validRoomCode();
+      allow list: if false;
+
+      allow update: if signedIn()
+        && validRoomCode()
+        && validRoomDocument()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.ownerId;
+    }
+
+    // Alles andere bleibt gesperrt.
     match /{document=**} {
       allow read, write: if false;
     }

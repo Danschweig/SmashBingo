@@ -108,6 +108,18 @@ function normalizeField(value) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function translateBonusError(error) {
+  if (
+    error?.code === "permission-denied" ||
+    /missing or insufficient permissions/i.test(error?.message || "")
+  ) {
+    return new Error(
+      "Der Bonus-Pool ist in Firestore noch nicht freigeschaltet. Bitte veröffentliche die aktuelle firestore.rules in der Firebase Console.",
+    );
+  }
+  return error;
+}
+
 export function createPoolStore() {
   let fields = loadLocalFields();
   let bonusFields = loadLocalBonusFields();
@@ -220,6 +232,21 @@ export function createPoolStore() {
         }
       }
 
+      const mutateRemoteBonusFields = (mutate) =>
+        firestore.runTransaction(db, async (transaction) => {
+          const documentSnapshot = await transaction.get(poolReference);
+          const storedBonusFields = documentSnapshot.data()?.bonusFields;
+          const baseBonusFields = Array.isArray(storedBonusFields)
+            ? storedBonusFields
+            : [...bonusFields];
+          const nextBonusFields = mutate(baseBonusFields);
+
+          transaction.update(poolReference, {
+            bonusFields: nextBonusFields,
+            updatedAt: firestore.serverTimestamp(),
+          });
+        });
+
       remoteActions = {
         add: (field) =>
           firestore.updateDoc(poolReference, {
@@ -260,23 +287,22 @@ export function createPoolStore() {
             updatedAt: firestore.serverTimestamp(),
           }),
         addBonus: (field) =>
-          firestore.updateDoc(poolReference, {
-            bonusFields: firestore.arrayUnion(field),
-            updatedAt: firestore.serverTimestamp(),
+          mutateRemoteBonusFields((remoteBonusFields) => {
+            const exists = remoteBonusFields.some(
+              (item) => item.localeCompare(field, "de", { sensitivity: "base" }) === 0,
+            );
+            if (exists) throw new Error("Dieses Bonus-Feld ist bereits im Pool.");
+            if (remoteBonusFields.length >= 100) {
+              throw new Error("Der Bonus-Pool kann höchstens 100 Felder enthalten.");
+            }
+            return [...remoteBonusFields, field];
           }),
         removeBonus: (field) =>
-          firestore.updateDoc(poolReference, {
-            bonusFields: firestore.arrayRemove(field),
-            updatedAt: firestore.serverTimestamp(),
-          }),
+          mutateRemoteBonusFields((remoteBonusFields) =>
+            remoteBonusFields.filter((item) => item !== field),
+          ),
         replaceBonus: (oldField, newField) =>
-          firestore.runTransaction(db, async (transaction) => {
-            const documentSnapshot = await transaction.get(poolReference);
-            const remoteBonusFields = documentSnapshot.data()?.bonusFields;
-            if (!Array.isArray(remoteBonusFields)) {
-              throw new Error("Der gemeinsame Bonus-Pool konnte nicht geladen werden.");
-            }
-
+          mutateRemoteBonusFields((remoteBonusFields) => {
             const fieldIndex = remoteBonusFields.indexOf(oldField);
             if (fieldIndex === -1) throw new Error("Dieses Bonus-Feld wurde zwischenzeitlich gelöscht.");
 
@@ -289,10 +315,7 @@ export function createPoolStore() {
 
             const nextBonusFields = [...remoteBonusFields];
             nextBonusFields[fieldIndex] = newField;
-            transaction.update(poolReference, {
-              bonusFields: nextBonusFields,
-              updatedAt: firestore.serverTimestamp(),
-            });
+            return nextBonusFields;
           }),
       };
 
@@ -470,7 +493,11 @@ export function createPoolStore() {
       if (bonusFields.length >= 100) throw new Error("Der Bonus-Pool kann höchstens 100 Felder enthalten.");
 
       if (remoteActions) {
-        await remoteActions.addBonus(field);
+        try {
+          await remoteActions.addBonus(field);
+        } catch (error) {
+          throw translateBonusError(error);
+        }
       } else {
         storeLocalBonusFields([...bonusFields, field]);
       }
@@ -482,7 +509,11 @@ export function createPoolStore() {
       if (!bonusFields.includes(field)) return;
 
       if (remoteActions) {
-        await remoteActions.removeBonus(field);
+        try {
+          await remoteActions.removeBonus(field);
+        } catch (error) {
+          throw translateBonusError(error);
+        }
       } else {
         storeLocalBonusFields(bonusFields.filter((item) => item !== field));
       }
@@ -506,7 +537,11 @@ export function createPoolStore() {
       if (newField === oldField) return newField;
 
       if (remoteActions) {
-        await remoteActions.replaceBonus(oldField, newField);
+        try {
+          await remoteActions.replaceBonus(oldField, newField);
+        } catch (error) {
+          throw translateBonusError(error);
+        }
       } else {
         const nextBonusFields = [...bonusFields];
         nextBonusFields[fieldIndex] = newField;

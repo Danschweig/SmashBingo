@@ -1,7 +1,6 @@
 import { createPoolStore } from "./pool-store.js";
 
 const BOARD_KEY = "smash-bingo-board-v1";
-const TRIPLE_BINGO_VIDEO_ID = "XlLbsTP0C_U";
 const store = createPoolStore();
 
 const elements = {
@@ -312,17 +311,16 @@ function updateWinningLines(allowSound = false) {
 }
 
 function playTripleBingoSound() {
-  const player = document.createElement("iframe");
-  player.src = `https://www.youtube-nocookie.com/embed/${TRIPLE_BINGO_VIDEO_ID}?autoplay=1&controls=0&playsinline=1&rel=0`;
-  player.title = "Dreifach-Bingo-Sound";
-  player.allow = "autoplay";
-  player.tabIndex = -1;
-  elements.sound.replaceChildren(player);
+  elements.sound.currentTime = 0;
+  elements.sound.play().catch(() => {
+    showToast("Dreifach-Bingo! Sound konnte nicht gestartet werden.");
+  });
   showToast("Dreifach-Bingo! 🔊");
 }
 
 function stopTripleBingoSound() {
-  elements.sound.replaceChildren();
+  elements.sound.pause();
+  elements.sound.currentTime = 0;
 }
 
 async function setBoardSize(size) {
