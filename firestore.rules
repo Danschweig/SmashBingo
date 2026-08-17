@@ -12,12 +12,15 @@ service cloud.firestore {
       allow create: if validPool();
       allow update: if validPool()
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['fields', 'updatedAt']);
+          .hasOnly(['fields', 'bonusFields', 'updatedAt']);
 
       function validPool() {
-        return request.resource.data.keys().hasOnly(['fields', 'updatedAt'])
+        return request.resource.data.keys().hasOnly(['fields', 'bonusFields', 'updatedAt'])
           && request.resource.data.fields is list
           && request.resource.data.fields.size() <= 200
+          && (!request.resource.data.keys().hasAny(['bonusFields'])
+            || (request.resource.data.bonusFields is list
+              && request.resource.data.bonusFields.size() <= 100))
           && request.resource.data.updatedAt is timestamp;
       }
     }

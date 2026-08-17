@@ -1,6 +1,7 @@
 import { firebaseConfig } from "./firebase-config.js";
 
 const STORAGE_KEY = "smash-bingo-fields-v1";
+const BONUS_STORAGE_KEY = "smash-bingo-bonus-fields-v1";
 const DELETED_FIELDS_KEY = "smash-bingo-deleted-fields-v1";
 const RESTORE_WINDOW_MS = 5 * 60 * 1000;
 const FIREBASE_VERSION = "12.16.0";
@@ -49,6 +50,8 @@ export const starterFields = [
   "Franklin Badge Clutch",
 ];
 
+export const starterBonusFields = [];
+
 function loadLocalFields() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
@@ -57,6 +60,17 @@ function loadLocalFields() {
       : [...starterFields];
   } catch {
     return [...starterFields];
+  }
+}
+
+function loadLocalBonusFields() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(BONUS_STORAGE_KEY));
+    return Array.isArray(saved) && saved.every((item) => typeof item === "string")
+      ? saved
+      : [...starterBonusFields];
+  } catch {
+    return [...starterBonusFields];
   }
 }
 
@@ -96,6 +110,7 @@ function normalizeField(value) {
 
 export function createPoolStore() {
   let fields = loadLocalFields();
+  let bonusFields = loadLocalBonusFields();
   let deletedFields = loadDeletedFields();
   let mode = firebaseIsConfigured() ? "connecting" : "local";
   let detail = mode === "local" ? "Firebase ist noch nicht eingerichtet." : "Verbindung zu Firestore wird aufgebaut.";
@@ -106,6 +121,7 @@ export function createPoolStore() {
   function snapshot() {
     return {
       fields: [...fields],
+      bonusFields: [...bonusFields],
       deletedFields: deletedFields.map((item) => ({
         ...item,
         expiresAt: item.deletedAt + RESTORE_WINDOW_MS,
@@ -123,6 +139,12 @@ export function createPoolStore() {
   function storeLocal(nextFields) {
     fields = [...nextFields];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fields));
+    notify();
+  }
+
+  function storeLocalBonusFields(nextBonusFields) {
+    bonusFields = [...nextBonusFields];
+    localStorage.setItem(BONUS_STORAGE_KEY, JSON.stringify(bonusFields));
     notify();
   }
 
@@ -186,11 +208,16 @@ export function createPoolStore() {
       if (!initialSnapshot.exists()) {
         await firestore.setDoc(poolReference, {
           fields,
+          bonusFields,
           updatedAt: firestore.serverTimestamp(),
         });
       } else {
-        const remoteFields = initialSnapshot.data().fields;
+        const remoteData = initialSnapshot.data();
+        const remoteFields = remoteData.fields;
         if (Array.isArray(remoteFields)) storeLocal(remoteFields);
+        if (Array.isArray(remoteData.bonusFields)) {
+          storeLocalBonusFields(remoteData.bonusFields);
+        }
       }
 
       remoteActions = {
@@ -232,6 +259,41 @@ export function createPoolStore() {
             fields: firestore.arrayUnion(...items),
             updatedAt: firestore.serverTimestamp(),
           }),
+        addBonus: (field) =>
+          firestore.updateDoc(poolReference, {
+            bonusFields: firestore.arrayUnion(field),
+            updatedAt: firestore.serverTimestamp(),
+          }),
+        removeBonus: (field) =>
+          firestore.updateDoc(poolReference, {
+            bonusFields: firestore.arrayRemove(field),
+            updatedAt: firestore.serverTimestamp(),
+          }),
+        replaceBonus: (oldField, newField) =>
+          firestore.runTransaction(db, async (transaction) => {
+            const documentSnapshot = await transaction.get(poolReference);
+            const remoteBonusFields = documentSnapshot.data()?.bonusFields;
+            if (!Array.isArray(remoteBonusFields)) {
+              throw new Error("Der gemeinsame Bonus-Pool konnte nicht geladen werden.");
+            }
+
+            const fieldIndex = remoteBonusFields.indexOf(oldField);
+            if (fieldIndex === -1) throw new Error("Dieses Bonus-Feld wurde zwischenzeitlich gelöscht.");
+
+            const duplicateExists = remoteBonusFields.some(
+              (item, index) =>
+                index !== fieldIndex &&
+                item.localeCompare(newField, "de", { sensitivity: "base" }) === 0,
+            );
+            if (duplicateExists) throw new Error("Dieses Bonus-Feld ist bereits im Pool.");
+
+            const nextBonusFields = [...remoteBonusFields];
+            nextBonusFields[fieldIndex] = newField;
+            transaction.update(poolReference, {
+              bonusFields: nextBonusFields,
+              updatedAt: firestore.serverTimestamp(),
+            });
+          }),
       };
 
       mode = "remote";
@@ -243,6 +305,8 @@ export function createPoolStore() {
         (documentSnapshot) => {
           const remoteFields = documentSnapshot.data()?.fields;
           if (Array.isArray(remoteFields)) storeLocal(remoteFields);
+          const remoteBonusFields = documentSnapshot.data()?.bonusFields;
+          if (Array.isArray(remoteBonusFields)) storeLocalBonusFields(remoteBonusFields);
           mode = "remote";
           detail = documentSnapshot.metadata.fromCache
             ? "Offline – Änderungen werden synchronisiert, sobald die Verbindung zurück ist."
@@ -268,6 +332,10 @@ export function createPoolStore() {
   window.addEventListener("storage", (event) => {
     if (event.key === STORAGE_KEY && !remoteActions) {
       fields = loadLocalFields();
+      notify();
+    }
+    if (event.key === BONUS_STORAGE_KEY && !remoteActions) {
+      bonusFields = loadLocalBonusFields();
       notify();
     }
     if (event.key === DELETED_FIELDS_KEY) {
@@ -387,6 +455,64 @@ export function createPoolStore() {
         storeLocal([...fields, ...selectedAdditions]);
       }
       return selectedAdditions.length;
+    },
+
+    async addBonusField(value) {
+      await ready;
+      const field = normalizeField(value);
+      if (!field) throw new Error("Bitte gib zuerst einen Text ein.");
+      if (field.length > 80) throw new Error("Ein Bonus-Feld darf höchstens 80 Zeichen lang sein.");
+
+      const exists = bonusFields.some(
+        (item) => item.localeCompare(field, "de", { sensitivity: "base" }) === 0,
+      );
+      if (exists) throw new Error("Dieses Bonus-Feld ist bereits im Pool.");
+      if (bonusFields.length >= 100) throw new Error("Der Bonus-Pool kann höchstens 100 Felder enthalten.");
+
+      if (remoteActions) {
+        await remoteActions.addBonus(field);
+      } else {
+        storeLocalBonusFields([...bonusFields, field]);
+      }
+      return field;
+    },
+
+    async removeBonusField(field) {
+      await ready;
+      if (!bonusFields.includes(field)) return;
+
+      if (remoteActions) {
+        await remoteActions.removeBonus(field);
+      } else {
+        storeLocalBonusFields(bonusFields.filter((item) => item !== field));
+      }
+    },
+
+    async updateBonusField(oldField, value) {
+      await ready;
+      const newField = normalizeField(value);
+      if (!newField) throw new Error("Bitte gib einen Text für das Bonus-Feld ein.");
+      if (newField.length > 80) throw new Error("Ein Bonus-Feld darf höchstens 80 Zeichen lang sein.");
+
+      const fieldIndex = bonusFields.indexOf(oldField);
+      if (fieldIndex === -1) throw new Error("Dieses Bonus-Feld wurde zwischenzeitlich gelöscht.");
+
+      const duplicateExists = bonusFields.some(
+        (item, index) =>
+          index !== fieldIndex &&
+          item.localeCompare(newField, "de", { sensitivity: "base" }) === 0,
+      );
+      if (duplicateExists) throw new Error("Dieses Bonus-Feld ist bereits im Pool.");
+      if (newField === oldField) return newField;
+
+      if (remoteActions) {
+        await remoteActions.replaceBonus(oldField, newField);
+      } else {
+        const nextBonusFields = [...bonusFields];
+        nextBonusFields[fieldIndex] = newField;
+        storeLocalBonusFields(nextBonusFields);
+      }
+      return newField;
     },
   };
 }

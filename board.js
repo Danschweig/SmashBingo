@@ -1,6 +1,7 @@
 import { createPoolStore } from "./pool-store.js";
 
 const BOARD_KEY = "smash-bingo-board-v1";
+const TRIPLE_BINGO_VIDEO_ID = "XlLbsTP0C_U";
 const store = createPoolStore();
 
 const elements = {
@@ -10,24 +11,51 @@ const elements = {
   board: document.querySelector("#bingoBoard"),
   boardEmpty: document.querySelector("#boardEmpty"),
   boardStatus: document.querySelector("#boardStatus"),
+  bonusCard: document.querySelector("#bonusCard"),
+  bonusButton: document.querySelector("#bonusFieldButton"),
+  bonusText: document.querySelector("#bonusFieldText"),
+  bonusResult: document.querySelector("#bonusFieldResult"),
+  confirmDialog: document.querySelector("#confirmDialog"),
+  confirmTitle: document.querySelector("#confirmDialogTitle"),
+  confirmMessage: document.querySelector("#confirmDialogMessage"),
+  confirmAccept: document.querySelector("#confirmDialogAccept"),
+  sound: document.querySelector("#tripleBingoSound"),
   toast: document.querySelector("#toast"),
 };
 
 let fields = [];
+let bonusFields = [];
 let boardSize = 4;
 let currentBoard = [];
 let markedCells = new Set();
+let currentBonus = "";
+let bonusMarked = false;
+let winningLineCount = 0;
 let toastTimer;
 
 store.subscribe((state) => {
   fields = state.fields;
+  bonusFields = state.bonusFields;
   elements.headerCount.textContent = fields.length;
+
+  if (currentBoard.length && !currentBonus && bonusFields.length) {
+    currentBonus = pickRandom(bonusFields);
+    bonusMarked = false;
+    renderBonus();
+    saveBoard();
+  }
 });
 
 function saveBoard() {
   localStorage.setItem(
     BOARD_KEY,
-    JSON.stringify({ size: boardSize, fields: currentBoard, marked: [...markedCells] }),
+    JSON.stringify({
+      size: boardSize,
+      fields: currentBoard,
+      marked: [...markedCells],
+      bonusField: currentBonus,
+      bonusMarked,
+    }),
   );
 }
 
@@ -42,9 +70,20 @@ function restoreBoard() {
     ) {
       boardSize = saved.size;
       currentBoard = saved.fields;
-      markedCells = new Set(Array.isArray(saved.marked) ? saved.marked : []);
+      markedCells = new Set(
+        Array.isArray(saved.marked)
+          ? saved.marked.filter(
+              (index) => Number.isInteger(index) && index >= 0 && index < currentBoard.length,
+            )
+          : [],
+      );
+      currentBonus = typeof saved.bonusField === "string" ? saved.bonusField : "";
+      bonusMarked = Boolean(currentBonus && saved.bonusMarked);
+      if (!currentBonus && bonusFields.length) currentBonus = pickRandom(bonusFields);
       updateSizeButtons();
       renderBoard();
+      renderBonus();
+      saveBoard();
     }
   } catch {
     localStorage.removeItem(BOARD_KEY);
@@ -60,6 +99,10 @@ function shuffle(items) {
   return shuffled;
 }
 
+function pickRandom(items) {
+  return items[Math.floor(Math.random() * items.length)] || "";
+}
+
 function generateBoard() {
   const needed = boardSize * boardSize;
   elements.boardStatus.classList.remove("is-success");
@@ -72,9 +115,52 @@ function generateBoard() {
 
   currentBoard = shuffle(fields).slice(0, needed);
   markedCells = new Set();
+  currentBonus = pickRandom(bonusFields);
+  bonusMarked = false;
+  winningLineCount = 0;
+  stopTripleBingoSound();
   renderBoard();
+  renderBonus();
   saveBoard();
-  showToast(`${boardSize} × ${boardSize} Board frisch gemischt`);
+  showToast(
+    currentBonus
+      ? `${boardSize} × ${boardSize} Board samt Bonus frisch gemischt`
+      : `${boardSize} × ${boardSize} Board gemischt · Bonus-Pool ist leer`,
+  );
+}
+
+async function requestConfirmation({ title, message, confirmLabel }) {
+  if (typeof elements.confirmDialog.showModal !== "function") {
+    return window.confirm(message);
+  }
+
+  elements.confirmTitle.textContent = title;
+  elements.confirmMessage.textContent = message;
+  elements.confirmAccept.textContent = confirmLabel;
+  elements.confirmDialog.returnValue = "cancel";
+
+  return new Promise((resolve) => {
+    elements.confirmDialog.addEventListener(
+      "close",
+      () => resolve(elements.confirmDialog.returnValue === "confirm"),
+      { once: true },
+    );
+    elements.confirmDialog.showModal();
+  });
+}
+
+async function confirmAndGenerateBoard() {
+  if (
+    currentBoard.length &&
+    !(await requestConfirmation({
+      title: "Neues Board mischen?",
+      message: "Das aktuelle Board, das Bonus-Feld und alle Markierungen werden unwiderruflich ersetzt.",
+      confirmLabel: "Board neu mischen",
+    }))
+  ) {
+    return;
+  }
+  generateBoard();
 }
 
 function renderBoard() {
@@ -87,13 +173,32 @@ function renderBoard() {
   elements.board.style.gridTemplateRows = boardTracks;
 
   currentBoard.forEach((field, index) => {
-    const cell = document.createElement("button");
-    cell.type = "button";
+    const cell = document.createElement("div");
     cell.className = "bingo-cell";
     cell.dataset.index = index;
-    cell.textContent = field;
-    cell.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
+
+    const toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "bingo-cell-toggle";
+    toggle.dataset.index = index;
+    toggle.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
+    toggle.setAttribute("aria-label", `${field} ${markedCells.has(index) ? "als offen markieren" : "abhaken"}`);
+
+    const label = document.createElement("span");
+    label.className = "bingo-cell-label";
+    label.textContent = field;
+    toggle.append(label);
+
+    const reroll = document.createElement("button");
+    reroll.type = "button";
+    reroll.className = "reroll-cell";
+    reroll.dataset.index = index;
+    reroll.textContent = "↻";
+    reroll.title = "Feld neu zufällig besetzen";
+    reroll.setAttribute("aria-label", `„${field}“ neu zufällig besetzen`);
+
     if (markedCells.has(index)) cell.classList.add("is-marked");
+    cell.append(toggle, reroll);
     elements.board.append(cell);
   });
 
@@ -104,11 +209,71 @@ function toggleCell(index) {
   if (markedCells.has(index)) markedCells.delete(index);
   else markedCells.add(index);
 
-  const cell = elements.board.querySelector(`[data-index="${index}"]`);
-  cell.classList.toggle("is-marked", markedCells.has(index));
-  cell.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
-  updateWinningLines();
+  const cell = elements.board.querySelector(`.bingo-cell[data-index="${index}"]`);
+  cell?.classList.toggle("is-marked", markedCells.has(index));
+  const toggle = cell?.querySelector(".bingo-cell-toggle");
+  toggle?.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
+  toggle?.setAttribute(
+    "aria-label",
+    `${currentBoard[index]} ${markedCells.has(index) ? "als offen markieren" : "abhaken"}`,
+  );
+  updateWinningLines(true);
   saveBoard();
+}
+
+function rerollCell(index) {
+  const availableFields = fields.filter((field) => !currentBoard.includes(field));
+  if (!availableFields.length) {
+    showToast("Kein unbenutztes Feld verfügbar · ergänze den Pool");
+    return;
+  }
+
+  const oldField = currentBoard[index];
+  const newField = pickRandom(availableFields);
+  currentBoard[index] = newField;
+  markedCells.delete(index);
+  renderBoard();
+  saveBoard();
+  showToast(`„${oldField}“ durch „${newField}“ ersetzt`);
+}
+
+async function confirmAndRerollCell(index) {
+  const field = currentBoard[index];
+  if (!field) return;
+
+  const confirmed = await requestConfirmation({
+    title: "Feld neu rollen?",
+    message: `„${field}“ wird gelöscht und durch ein anderes zufälliges Feld ersetzt.`,
+    confirmLabel: "Feld neu rollen",
+  });
+  if (confirmed) rerollCell(index);
+}
+
+function renderBonus() {
+  const hasBonus = Boolean(currentBonus);
+  elements.bonusCard.classList.toggle("is-empty", !hasBonus);
+  elements.bonusCard.classList.toggle("is-marked", hasBonus && bonusMarked);
+  elements.bonusButton.disabled = !hasBonus;
+  elements.bonusButton.setAttribute("aria-pressed", bonusMarked ? "true" : "false");
+
+  if (hasBonus) {
+    elements.bonusText.textContent = currentBonus;
+    elements.bonusResult.textContent = bonusMarked ? "BONUS BINGO!" : "Antippen, sobald erfüllt";
+  } else if (currentBoard.length) {
+    elements.bonusText.textContent = "Der Bonus-Pool ist leer. Ergänze ihn auf der Pool-Seite.";
+    elements.bonusResult.textContent = "";
+  } else {
+    elements.bonusText.textContent = "Wird zusammen mit dem nächsten Board gezogen.";
+    elements.bonusResult.textContent = "";
+  }
+}
+
+function toggleBonus() {
+  if (!currentBonus) return;
+  bonusMarked = !bonusMarked;
+  renderBonus();
+  saveBoard();
+  showToast(bonusMarked ? "Extra Bonus-Bingo geschafft!" : "Bonus-Markierung entfernt");
 }
 
 function getLines() {
@@ -124,12 +289,12 @@ function getLines() {
   return lines;
 }
 
-function updateWinningLines() {
+function updateWinningLines(allowSound = false) {
   elements.board.querySelectorAll(".bingo-cell").forEach((cell) => cell.classList.remove("is-winning"));
   const winningLines = getLines().filter((line) => line.every((index) => markedCells.has(index)));
 
   winningLines.flat().forEach((index) => {
-    elements.board.querySelector(`[data-index="${index}"]`)?.classList.add("is-winning");
+    elements.board.querySelector(`.bingo-cell[data-index="${index}"]`)?.classList.add("is-winning");
   });
 
   if (winningLines.length) {
@@ -139,18 +304,54 @@ function updateWinningLines() {
     elements.boardStatus.textContent = "";
     elements.boardStatus.classList.remove("is-success");
   }
+
+  if (allowSound && winningLineCount < 3 && winningLines.length >= 3) {
+    playTripleBingoSound();
+  }
+  winningLineCount = winningLines.length;
 }
 
-function setBoardSize(size) {
+function playTripleBingoSound() {
+  const player = document.createElement("iframe");
+  player.src = `https://www.youtube-nocookie.com/embed/${TRIPLE_BINGO_VIDEO_ID}?autoplay=1&controls=0&playsinline=1&rel=0`;
+  player.title = "Dreifach-Bingo-Sound";
+  player.allow = "autoplay";
+  player.tabIndex = -1;
+  elements.sound.replaceChildren(player);
+  showToast("Dreifach-Bingo! 🔊");
+}
+
+function stopTripleBingoSound() {
+  elements.sound.replaceChildren();
+}
+
+async function setBoardSize(size) {
   if (size === boardSize) return;
+  if (
+    currentBoard.length &&
+    !(await requestConfirmation({
+      title: `Auf ${size} × ${size} wechseln?`,
+      message: "Das aktuelle Board, das Bonus-Feld und alle Markierungen werden dabei gelöscht.",
+      confirmLabel: "Größe ändern",
+    }))
+  ) {
+    updateSizeButtons();
+    return;
+  }
+
   boardSize = size;
   currentBoard = [];
   markedCells = new Set();
+  currentBonus = "";
+  bonusMarked = false;
+  winningLineCount = 0;
+  stopTripleBingoSound();
   elements.board.replaceChildren();
   elements.board.hidden = true;
   elements.boardEmpty.hidden = false;
   localStorage.removeItem(BOARD_KEY);
   updateSizeButtons();
+  renderBonus();
   elements.boardStatus.textContent = `Bereit für ein ${boardSize} × ${boardSize} Board.`;
   elements.boardStatus.classList.remove("is-success");
 }
@@ -173,13 +374,21 @@ function showToast(message) {
 elements.sizeButtons.forEach((button) => {
   button.addEventListener("click", () => setBoardSize(Number(button.dataset.size)));
 });
-elements.generateButton.addEventListener("click", generateBoard);
+elements.generateButton.addEventListener("click", confirmAndGenerateBoard);
+elements.bonusButton.addEventListener("click", toggleBonus);
 elements.board.addEventListener("click", (event) => {
-  const cell = event.target.closest(".bingo-cell");
-  if (cell) toggleCell(Number(cell.dataset.index));
+  const rerollButton = event.target.closest(".reroll-cell");
+  if (rerollButton) {
+    confirmAndRerollCell(Number(rerollButton.dataset.index));
+    return;
+  }
+
+  const toggleButton = event.target.closest(".bingo-cell-toggle");
+  if (toggleButton) toggleCell(Number(toggleButton.dataset.index));
 });
 
 restoreBoard();
+renderBonus();
 
 if ("serviceWorker" in navigator && location.protocol !== "file:") {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js"));

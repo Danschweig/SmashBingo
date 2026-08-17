@@ -89,6 +89,38 @@
           </div>
           <ul id="deletedFieldList" class="deleted-field-list" aria-label="Wiederherstellbare Bingo-Felder"></ul>
         </section>
+
+        <section class="bonus-pool-section" aria-labelledby="bonusPoolHeading">
+          <div class="panel-heading bonus-pool-heading">
+            <div>
+              <p class="step-label"><span>03</span> Extra-Challenge</p>
+              <h2 id="bonusPoolHeading">Bonus-Pool</h2>
+            </div>
+            <span id="bonusPoolBadge" class="pool-badge bonus-pool-badge">0</span>
+          </div>
+          <p class="bonus-pool-copy">Pro Board wird eine Bedingung aus dieser eigenen Liste gezogen. Erfüllt ihr sie, gibt es ein zusätzliches Bonus-Bingo.</p>
+
+          <form id="bonusFieldForm" class="add-form">
+            <label class="sr-only" for="bonusFieldInput">Neues Bonus-Feld</label>
+            <input
+              id="bonusFieldInput"
+              name="bonusField"
+              type="text"
+              maxlength="80"
+              autocomplete="off"
+              placeholder="z. B. Gewinne mit einem Random-Charakter"
+              required
+            />
+            <button type="submit" aria-label="Bonus-Feld hinzufügen">+</button>
+          </form>
+          <p id="bonusFormError" class="form-error" role="alert"></p>
+
+          <div class="pool-toolbar">
+            <span>Gespeicherte Bonus-Felder</span>
+          </div>
+          <ul id="bonusFieldList" class="field-list expanded-list bonus-field-list" aria-label="Gespeicherte Bonus-Felder"></ul>
+          <div id="bonusListEmpty" class="list-empty">Noch keine Bonus-Felder. Leg oben die erste Extra-Challenge an!</div>
+        </section>
       </section>
     </main>
 

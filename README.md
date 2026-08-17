@@ -4,8 +4,8 @@ Eine mobile Bingo-Webanwendung für gemeinsame *Super Smash Bros. Ultimate*-Rund
 
 ## Seiten und Funktionen
 
-- `index.html`: zufällige 4 × 4- und 5 × 5-Boards erzeugen und Felder abhaken
-- `pool.html`: gemeinsame Bingo-Felder hinzufügen und löschen
+- `index.html`: zufällige 4 × 4- und 5 × 5-Boards erzeugen, Felder abhaken oder einzeln neu rollen und eine Bonus-Challenge spielen
+- `pool.html`: gemeinsame Bingo- und Bonus-Felder hinzufügen, bearbeiten und löschen
 - Der aktuelle Pool und das Board werden lokal zwischengespeichert
 - Mit Firebase Firestore werden Pool-Änderungen in Echtzeit an alle Geräte übertragen
 - Installierbare Progressive Web App mit Offline-Oberfläche
@@ -25,7 +25,9 @@ Ohne Firebase-Konfiguration läuft sie automatisch im lokalen Modus. Auf der Poo
 5. Öffne in Firestore den Tab **Rules**, kopiere den Inhalt aus [`firestore.rules`](firestore.rules) hinein und klicke auf **Publish**.
 6. Committe und pushe die Änderungen zu GitHub Pages. Beim ersten Aufruf wird der bisher lokale Pool als gemeinsamer Pool angelegt.
 
-Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln erlauben ausschließlich den Zugriff auf das Pool-Dokument, begrenzen den Pool auf 200 Einträge und verbieten das Löschen des Dokuments.
+Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln erlauben ausschließlich den Zugriff auf das Pool-Dokument, begrenzen den normalen Pool auf 200 sowie den Bonus-Pool auf 100 Einträge und verbieten das Löschen des Dokuments. Nach diesem Update müssen die geänderten Regeln erneut in der Firebase Console veröffentlicht werden, bevor der Bonus-Pool cloud-synchronisiert werden kann.
+
+Der Sound bei drei gleichzeitigen Bingo-Linien wird über den vorgegebenen YouTube-Link im datenschutzfreundlichen Embed geladen. Dafür ist eine Internetverbindung nötig; eine lokale MP3-Datei ist nicht erforderlich.
 
 ### Sicherheitshinweis
 

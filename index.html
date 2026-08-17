@@ -63,13 +63,27 @@
         </div>
         <div id="bingoBoard" class="bingo-board" aria-label="Bingo Board" hidden></div>
 
+        <section id="bonusCard" class="bonus-card is-empty" aria-labelledby="bonusHeading">
+          <div class="bonus-card-heading">
+            <div>
+              <span class="bonus-kicker">Extra-Challenge</span>
+              <h3 id="bonusHeading">Bonus-Feld</h3>
+            </div>
+            <span class="bonus-star" aria-hidden="true">★</span>
+          </div>
+          <button id="bonusFieldButton" class="bonus-field-button" type="button" disabled aria-pressed="false">
+            <span id="bonusFieldText">Wird zusammen mit dem nächsten Board gezogen.</span>
+            <strong id="bonusFieldResult" aria-live="polite"></strong>
+          </button>
+        </section>
+
         <div id="boardStatus" class="board-status" role="status" aria-live="polite"></div>
         <button id="generateButton" class="primary-button" type="button">
           <span aria-hidden="true">↻</span>
           Neues Board mischen
         </button>
         <div class="board-footer">
-          <p class="tip"><span aria-hidden="true">●</span> Tippe auf ein Feld, um es abzuhaken.</p>
+          <p class="tip"><span aria-hidden="true">●</span> Tippe zum Abhaken auf ein Feld oder nutze ↻ zum Neurollen.</p>
           <a class="manage-link" href="pool.html">Pool bearbeiten →</a>
         </div>
       </section>
@@ -105,7 +119,21 @@
       </section>
     </main>
 
+    <dialog id="confirmDialog" class="confirm-dialog" aria-labelledby="confirmDialogTitle" aria-describedby="confirmDialogMessage">
+      <form method="dialog" class="confirm-dialog-card">
+        <span class="confirm-dialog-icon" aria-hidden="true">!</span>
+        <p class="confirm-dialog-kicker">Bitte bestätigen</p>
+        <h2 id="confirmDialogTitle">Aktion bestätigen</h2>
+        <p id="confirmDialogMessage"></p>
+        <div class="confirm-dialog-actions">
+          <button class="confirm-cancel-button" type="submit" value="cancel" autofocus>Abbrechen</button>
+          <button id="confirmDialogAccept" class="confirm-accept-button" type="submit" value="confirm">Bestätigen</button>
+        </div>
+      </form>
+    </dialog>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="tripleBingoSound" class="triple-bingo-sound" aria-hidden="true"></div>
     <script type="module" src="board.js"></script>
   </body>
 </html>

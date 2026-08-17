@@ -13,6 +13,13 @@ const elements = {
   deletedPanel: document.querySelector("#deletedFieldsPanel"),
   deletedList: document.querySelector("#deletedFieldList"),
   deletedBadge: document.querySelector("#deletedFieldsBadge"),
+  bonusForm: document.querySelector("#bonusFieldForm"),
+  bonusInput: document.querySelector("#bonusFieldInput"),
+  bonusSubmitButton: document.querySelector("#bonusFieldForm button"),
+  bonusFormError: document.querySelector("#bonusFormError"),
+  bonusList: document.querySelector("#bonusFieldList"),
+  bonusListEmpty: document.querySelector("#bonusListEmpty"),
+  bonusBadge: document.querySelector("#bonusPoolBadge"),
   syncNotice: document.querySelector("#syncNotice"),
   syncTitle: document.querySelector("#syncTitle"),
   syncText: document.querySelector("#syncText"),
@@ -20,8 +27,10 @@ const elements = {
 };
 
 let fields = [];
+let bonusFields = [];
 let deletedFields = [];
 let editingField = null;
+let editingBonusField = null;
 let syncMode = "connecting";
 let isBusy = false;
 let toastTimer;
@@ -146,6 +155,81 @@ function renderDeletedFields() {
   updateRestoreCountdowns();
 }
 
+function renderBonusFields() {
+  elements.bonusList.replaceChildren();
+  elements.bonusListEmpty.hidden = bonusFields.length !== 0;
+  elements.bonusBadge.textContent = bonusFields.length;
+
+  bonusFields.forEach((field) => {
+    const item = document.createElement("li");
+    item.className = "field-item bonus-field-item";
+
+    if (field === editingBonusField) {
+      item.classList.add("is-editing");
+
+      const editForm = document.createElement("form");
+      editForm.className = "edit-field-form bonus-edit-field-form";
+      editForm.dataset.field = field;
+
+      const editInput = document.createElement("input");
+      editInput.className = "edit-field-input";
+      editInput.type = "text";
+      editInput.maxLength = 80;
+      editInput.value = field;
+      editInput.required = true;
+      editInput.setAttribute("aria-label", `Bonus-Feld „${field}“ bearbeiten`);
+
+      const save = document.createElement("button");
+      save.className = "edit-save-button";
+      save.type = "submit";
+      save.textContent = "✓";
+      save.title = "Änderung speichern";
+      save.setAttribute("aria-label", "Änderung speichern");
+
+      const cancel = document.createElement("button");
+      cancel.className = "edit-cancel-button bonus-edit-cancel-button";
+      cancel.type = "button";
+      cancel.textContent = "✕";
+      cancel.title = "Bearbeitung abbrechen";
+      cancel.setAttribute("aria-label", "Bearbeitung abbrechen");
+
+      editForm.append(editInput, save, cancel);
+      item.append(editForm);
+      elements.bonusList.append(item);
+      return;
+    }
+
+    const text = document.createElement("span");
+    text.className = "field-text";
+    text.textContent = field;
+
+    const actions = document.createElement("div");
+    actions.className = "field-actions";
+
+    const edit = document.createElement("button");
+    edit.className = "edit-button bonus-edit-button";
+    edit.type = "button";
+    edit.dataset.field = field;
+    edit.setAttribute("aria-label", `Bonus-Feld „${field}“ bearbeiten`);
+    edit.title = "Bonus-Feld bearbeiten";
+    edit.innerHTML = "&#9998;";
+
+    const remove = document.createElement("button");
+    remove.className = "delete-button bonus-delete-button";
+    remove.type = "button";
+    remove.dataset.field = field;
+    remove.setAttribute("aria-label", `Bonus-Feld „${field}“ löschen`);
+    remove.title = "Bonus-Feld löschen";
+    remove.innerHTML = "&#10005;";
+
+    actions.append(edit, remove);
+    item.append(text, actions);
+    elements.bonusList.append(item);
+  });
+
+  updateInteractiveState();
+}
+
 function renderSyncState(mode, detail) {
   syncMode = mode;
   elements.syncNotice.className = `sync-notice is-${mode}`;
@@ -165,6 +249,8 @@ function updateInteractiveState() {
   const disabled = isBusy || syncMode === "connecting";
   elements.input.disabled = disabled;
   elements.submitButton.disabled = disabled;
+  elements.bonusInput.disabled = disabled;
+  elements.bonusSubmitButton.disabled = disabled;
   elements.list
     .querySelectorAll(".delete-button, .edit-button, .edit-field-input, .edit-save-button, .edit-cancel-button")
     .forEach((control) => {
@@ -173,6 +259,11 @@ function updateInteractiveState() {
   elements.deletedList.querySelectorAll(".restore-button").forEach((button) => {
     button.disabled = disabled;
   });
+  elements.bonusList
+    .querySelectorAll("button, input")
+    .forEach((control) => {
+      control.disabled = disabled;
+    });
 }
 
 function setBusy(nextIsBusy) {
@@ -189,10 +280,80 @@ function showToast(message) {
 
 store.subscribe((state) => {
   fields = state.fields;
+  bonusFields = state.bonusFields;
   deletedFields = state.deletedFields;
   renderFields();
   renderDeletedFields();
+  renderBonusFields();
   renderSyncState(state.mode, state.detail);
+});
+
+elements.bonusForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  elements.bonusFormError.textContent = "";
+  setBusy(true);
+  try {
+    await store.addBonusField(elements.bonusInput.value);
+    elements.bonusForm.reset();
+    showToast("Bonus-Feld zum gemeinsamen Pool hinzugefügt");
+  } catch (error) {
+    elements.bonusFormError.textContent = error.message;
+  } finally {
+    setBusy(false);
+    elements.bonusInput.focus();
+  }
+});
+
+elements.bonusList.addEventListener("click", async (event) => {
+  const editButton = event.target.closest(".bonus-edit-button");
+  if (editButton) {
+    editingBonusField = editButton.dataset.field;
+    elements.bonusFormError.textContent = "";
+    renderBonusFields();
+    const editInput = elements.bonusList.querySelector(".edit-field-input");
+    editInput?.focus();
+    editInput?.select();
+    return;
+  }
+
+  if (event.target.closest(".bonus-edit-cancel-button")) {
+    editingBonusField = null;
+    elements.bonusFormError.textContent = "";
+    renderBonusFields();
+    return;
+  }
+
+  const deleteButton = event.target.closest(".bonus-delete-button");
+  if (!deleteButton) return;
+
+  deleteButton.disabled = true;
+  try {
+    await store.removeBonusField(deleteButton.dataset.field);
+    showToast(`Bonus-Feld „${deleteButton.dataset.field}“ entfernt`);
+  } catch (error) {
+    deleteButton.disabled = false;
+    elements.bonusFormError.textContent = error.message;
+  }
+});
+
+elements.bonusList.addEventListener("submit", async (event) => {
+  const editForm = event.target.closest(".bonus-edit-field-form");
+  if (!editForm) return;
+
+  event.preventDefault();
+  const editInput = editForm.querySelector(".edit-field-input");
+  elements.bonusFormError.textContent = "";
+  setBusy(true);
+  try {
+    const updatedField = await store.updateBonusField(editForm.dataset.field, editInput.value);
+    editingBonusField = null;
+    showToast(`Bonus-Feld „${updatedField}“ aktualisiert`);
+  } catch (error) {
+    elements.bonusFormError.textContent = error.message;
+  } finally {
+    setBusy(false);
+    if (editingBonusField) editInput.focus();
+  }
 });
 
 elements.form.addEventListener("submit", async (event) => {

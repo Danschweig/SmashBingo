@@ -692,7 +692,7 @@ button {
   display: grid;
   min-width: 0;
   min-height: 0;
-  padding: 8px;
+  padding: 0;
   place-items: center;
   overflow: hidden;
   color: var(--ink);
@@ -706,6 +706,55 @@ button {
   box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.08);
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
   transition: filter 130ms ease, transform 130ms ease, background 130ms ease;
+}
+
+.bingo-cell-toggle {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 8px 27px;
+  place-items: center;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  overflow-wrap: inherit;
+  background: transparent;
+  border: 0;
+}
+
+.bingo-cell-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reroll-cell {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  z-index: 2;
+  display: grid;
+  width: 23px;
+  height: 22px;
+  padding: 0;
+  place-items: center;
+  color: #6f6f75;
+  font-size: 0.9rem;
+  font-weight: 900;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 50%;
+  transition: color 130ms ease, background 130ms ease, transform 130ms ease;
+}
+
+.reroll-cell:hover,
+.reroll-cell:focus-visible {
+  color: white;
+  background: var(--ink);
+  transform: rotate(25deg);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -743,6 +792,13 @@ button {
   animation: win-pop 520ms ease both;
 }
 
+.bingo-cell.is-marked .reroll-cell,
+.bingo-cell.is-winning .reroll-cell {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.8);
+  text-shadow: none;
+}
+
 @keyframes win-pop {
   50% { filter: brightness(1.15); transform: scale(1.045) rotate(-1deg); }
 }
@@ -769,6 +825,122 @@ button {
 .manage-link,
 .text-button {
   color: var(--red);
+}
+
+.bonus-card {
+  position: relative;
+  margin-top: 22px;
+  padding: 17px;
+  color: white;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, transparent 0 74%, rgba(255, 255, 255, 0.08) 74.3%),
+    var(--ink);
+  border-left: 6px solid var(--gold);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.18);
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+.bonus-card.is-empty {
+  color: var(--ink);
+  background: #e4e4e7;
+  border-left-color: #a8a8ad;
+  box-shadow: none;
+}
+
+.bonus-card.is-marked {
+  color: var(--ink);
+  background: linear-gradient(145deg, #ffe699, var(--gold));
+  border-left-color: var(--red);
+  animation: win-pop 520ms ease both;
+}
+
+.bonus-card-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.bonus-card-heading h3 {
+  margin: 1px 0 0;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.35rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bonus-kicker {
+  display: block;
+  color: var(--gold);
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.bonus-card.is-empty .bonus-kicker,
+.bonus-card.is-marked .bonus-kicker {
+  color: var(--red);
+}
+
+.bonus-star {
+  color: var(--gold);
+  font-size: 1.55rem;
+}
+
+.bonus-card.is-marked .bonus-star {
+  color: var(--red);
+}
+
+.bonus-field-button {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 15px;
+  color: var(--ink);
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: left;
+  background: white;
+  border: 0;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.08);
+}
+
+.bonus-field-button:not(:disabled):hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.bonus-field-button:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.bonus-field-button strong {
+  flex: 0 0 auto;
+  color: var(--red);
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 0.78rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.bonus-card.is-marked .bonus-field-button {
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.bonus-card.is-marked .bonus-field-button strong {
+  font-size: 1rem;
 }
 
 .primary-button {
@@ -1149,6 +1321,47 @@ button {
   border-left: 5px solid var(--gold);
 }
 
+.bonus-pool-section {
+  margin-top: 38px;
+  padding-top: 30px;
+  border-top: 3px solid var(--ink);
+}
+
+.bonus-pool-heading {
+  margin-bottom: 13px;
+}
+
+.bonus-pool-badge {
+  color: var(--ink);
+  background: var(--gold);
+}
+
+.bonus-pool-copy {
+  max-width: 610px;
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.bonus-field-item::before {
+  background: var(--gold);
+}
+
+.triple-bingo-sound {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.triple-bingo-sound iframe {
+  width: 1px;
+  height: 1px;
+  border: 0;
+}
+
 .deleted-fields-heading {
   display: flex;
   gap: 16px;
@@ -1248,6 +1461,130 @@ button {
 .delete-button:disabled {
   cursor: wait;
   opacity: 0.55;
+}
+
+.confirm-dialog {
+  width: min(460px, calc(100% - 28px));
+  max-height: calc(100vh - 28px);
+  max-height: calc(100dvh - 28px);
+  margin: auto;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(5, 5, 8, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-dialog[open] {
+  animation: confirm-dialog-in 180ms ease-out both;
+}
+
+.confirm-dialog-card {
+  position: relative;
+  padding: 30px 26px 25px;
+  overflow: hidden;
+  text-align: center;
+  background:
+    linear-gradient(135deg, rgba(0, 0, 0, 0.025) 25%, transparent 25%) 0 0 / 10px 10px,
+    var(--surface);
+  border: 1px solid #bdbdc1;
+  border-top: 7px solid var(--red);
+  box-shadow: 12px 14px 0 rgba(0, 0, 0, 0.32);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+.confirm-dialog-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 13px;
+  place-items: center;
+  color: white;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 2rem;
+  font-style: italic;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--red-bright), var(--red-dark));
+  border: 4px solid white;
+  border-radius: 50%;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.confirm-dialog-kicker {
+  margin: 0 0 5px;
+  color: var(--red);
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 0.73rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.confirm-dialog h2 {
+  margin: 0;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: clamp(1.7rem, 7vw, 2.25rem);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+#confirmDialogMessage {
+  max-width: 360px;
+  margin: 13px auto 22px;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.confirm-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+}
+
+.confirm-dialog-actions button {
+  min-height: 56px;
+  padding: 11px 14px;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 0.98rem;
+  font-style: italic;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 0;
+  transition: filter 130ms ease, transform 130ms ease;
+}
+
+.confirm-dialog-actions button:hover,
+.confirm-dialog-actions button:focus-visible {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.confirm-cancel-button {
+  color: var(--ink);
+  background: #d7d7db;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.12);
+}
+
+.confirm-accept-button {
+  color: white;
+  background: linear-gradient(135deg, var(--red-bright), var(--red-dark));
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.25);
+}
+
+@keyframes confirm-dialog-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .toast {
@@ -1495,13 +1832,39 @@ button {
   }
 
   .bingo-cell {
-    padding: 4px;
     font-size: clamp(0.55rem, 2.65vw, 0.72rem);
     clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
   }
 
   .bingo-board[data-size="5"] .bingo-cell {
     font-size: clamp(0.48rem, 2.15vw, 0.63rem);
+  }
+
+  .bingo-cell-toggle {
+    padding: 4px 3px 21px;
+  }
+
+  .reroll-cell {
+    right: 3px;
+    bottom: 3px;
+    width: 19px;
+    height: 18px;
+    font-size: 0.72rem;
+  }
+
+  .bonus-card {
+    margin-top: 16px;
+    padding: 13px;
+  }
+
+  .bonus-field-button {
+    display: block;
+    padding: 11px 12px;
+  }
+
+  .bonus-field-button strong {
+    display: block;
+    margin-top: 6px;
   }
 
   .board-footer {
@@ -1537,6 +1900,32 @@ button {
   .restore-button {
     padding: 7px 8px;
     font-size: 0.7rem;
+  }
+
+  .confirm-dialog {
+    width: min(430px, calc(100% - 20px));
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .confirm-dialog-card {
+    padding: 24px 17px 17px;
+    box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .confirm-dialog-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 1.75rem;
+  }
+
+  .confirm-dialog-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .confirm-dialog-actions button {
+    min-height: 58px;
+    font-size: 1.05rem;
   }
 
   .toast {
