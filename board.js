@@ -18,7 +18,12 @@ const elements = {
   confirmTitle: document.querySelector("#confirmDialogTitle"),
   confirmMessage: document.querySelector("#confirmDialogMessage"),
   confirmAccept: document.querySelector("#confirmDialogAccept"),
-  sound: document.querySelector("#tripleBingoSound"),
+  sounds: {
+    double: document.querySelector("#doubleBingoSound"),
+    triple: document.querySelector("#tripleBingoSound"),
+    five: document.querySelector("#fiveBingoSound"),
+    full: document.querySelector("#fullBoardSound"),
+  },
   toast: document.querySelector("#toast"),
 };
 
@@ -30,6 +35,10 @@ let markedCells = new Set();
 let currentBonus = "";
 let bonusMarked = false;
 let winningLineCount = 0;
+let boardWasFull = false;
+let activeSound = null;
+let soundStopTimer;
+let soundPlaybackId = 0;
 let toastTimer;
 
 store.subscribe((state) => {
@@ -117,7 +126,8 @@ function generateBoard() {
   currentBonus = pickRandom(bonusFields);
   bonusMarked = false;
   winningLineCount = 0;
-  stopTripleBingoSound();
+  boardWasFull = false;
+  stopBingoSound();
   renderBoard();
   renderBonus();
   saveBoard();
@@ -304,23 +314,65 @@ function updateWinningLines(allowSound = false) {
     elements.boardStatus.classList.remove("is-success");
   }
 
-  if (allowSound && winningLineCount < 3 && winningLines.length >= 3) {
-    playTripleBingoSound();
+  const boardIsFull = currentBoard.length > 0 && markedCells.size === currentBoard.length;
+  if (allowSound) {
+    if (boardIsFull && !boardWasFull) playBingoSound("full", "Ganzes Board voll!");
+    else if (winningLineCount < 5 && winningLines.length >= 5) playBingoSound("five", "Fünffach-Bingo!");
+    else if (winningLineCount < 3 && winningLines.length >= 3) playBingoSound("triple", "Dreifach-Bingo!");
+    else if (winningLineCount < 2 && winningLines.length >= 2) playBingoSound("double", "Doppel-Bingo!", 4);
   }
   winningLineCount = winningLines.length;
+  boardWasFull = boardIsFull;
 }
 
-function playTripleBingoSound() {
-  elements.sound.currentTime = 0;
-  elements.sound.play().catch(() => {
-    showToast("Dreifach-Bingo! Sound konnte nicht gestartet werden.");
-  });
-  showToast("Dreifach-Bingo! 🔊");
+function playBingoSound(key, message, maxSeconds) {
+  stopBingoSound();
+  const sound = elements.sounds[key];
+  const playbackId = soundPlaybackId;
+  activeSound = sound;
+  // Keep play() directly in the click handler for mobile user activation.
+  try {
+    sound.currentTime = 0;
+    sound.onplaying = () => {
+      if (playbackId !== soundPlaybackId) return;
+      showToast(message + " 🔊");
+      if (maxSeconds) {
+        window.clearTimeout(soundStopTimer);
+        soundStopTimer = window.setTimeout(
+          () => { if (playbackId === soundPlaybackId) stopBingoSound(); },
+          Math.max(0, maxSeconds - sound.currentTime) * 1000,
+        );
+      }
+    };
+    sound.ontimeupdate = () => {
+      if (maxSeconds && sound.currentTime >= maxSeconds && playbackId === soundPlaybackId) stopBingoSound();
+    };
+    sound.onended = () => { if (playbackId === soundPlaybackId) stopBingoSound(); };
+    sound.play().catch((error) => reportSoundError(error, playbackId, message));
+  } catch (error) {
+    reportSoundError(error, playbackId, message);
+  }
 }
 
-function stopTripleBingoSound() {
-  elements.sound.pause();
-  elements.sound.currentTime = 0;
+function reportSoundError(error, playbackId, message) {
+  if (playbackId !== soundPlaybackId || error.name === "AbortError") return;
+  console.warn("Bingo-Sound konnte nicht abgespielt werden:", error);
+  stopBingoSound();
+  showToast(error.name === "NotAllowedError"
+    ? message + " Bitte Sound für diese Website im Browser erlauben."
+    : message + " Sound nicht verfügbar – bitte Seite neu laden.");
+}
+
+function stopBingoSound() {
+  soundPlaybackId += 1;
+  window.clearTimeout(soundStopTimer);
+  if (!activeSound) return;
+  activeSound.onplaying = null;
+  activeSound.ontimeupdate = null;
+  activeSound.onended = null;
+  activeSound.pause();
+  activeSound.currentTime = 0;
+  activeSound = null;
 }
 
 async function setBoardSize(size) {
@@ -343,7 +395,8 @@ async function setBoardSize(size) {
   currentBonus = "";
   bonusMarked = false;
   winningLineCount = 0;
-  stopTripleBingoSound();
+  boardWasFull = false;
+  stopBingoSound();
   elements.board.replaceChildren();
   elements.board.hidden = true;
   elements.boardEmpty.hidden = false;

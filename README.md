@@ -27,7 +27,9 @@ Ohne Firebase-Konfiguration läuft sie automatisch im lokalen Modus. Auf der Poo
 
 Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln erlauben ausschließlich den Zugriff auf das Pool-Dokument, begrenzen den normalen Pool auf 200 sowie den Bonus-Pool auf 100 Einträge und verbieten das Löschen des Dokuments. Nach diesem Update müssen die geänderten Regeln erneut in der Firebase Console veröffentlicht werden, bevor der Bonus-Pool cloud-synchronisiert werden kann.
 
-Der Sound bei drei gleichzeitigen Bingo-Linien wird aus `assets/triple-bingo.mp3` abgespielt und vom Service Worker für die Offline-Nutzung zwischengespeichert.
+Beim Erreichen von zwei Bingo-Linien spielen die ersten vier Sekunden von `assets/Double-Bingo.mp3`, bei drei Linien `assets/triple-bingo.mp3`, bei fünf Linien `assets/5-bingo.mp3` und beim vollständig markierten Board `assets/Alle Voll.mp3`. Das Bonus-Feld zählt separat. Überschreitet ein Klick mehrere Schwellen, hat das volle Board Vorrang, danach fünf, drei und zwei Linien. Beim Wiederherstellen des Boards bleiben die Sounds aus; fällt der Stand unter eine Schwelle, kann sie erneut ausgelöst werden.
+
+Die Sounds starten direkt beim Antippen. Der Service Worker speichert die vollständigen MP3-Dateien für die Offline-Nutzung und beantwortet Byte-Range-Anfragen mit passenden Teilantworten. Netzwerk-Teilantworten (HTTP 206) werden nicht in den Cache geschrieben, da die Cache API dies ablehnt. Cache-Schreibfehler blockieren erfolgreiche Netzwerkantworten nicht mehr.
 
 ### Sicherheitshinweis
 
