@@ -1,10 +1,18 @@
 import { createPoolStore } from "./pool-store.js";
+import { PLAYERS, createLeaderboardStore } from "./leaderboard-store.js";
 
 const BOARD_KEY = "smash-bingo-board-v1";
 const store = createPoolStore();
+const leaderboard = createLeaderboardStore();
+const PLAYER_KEY = "smash-bingo-player-v1";
 
 const elements = {
   headerCount: document.querySelector("#headerCount"),
+  playerButtons: [...document.querySelectorAll(".player-option")],
+  roundInfo: document.querySelector("#roundInfo"),
+  finishButton: document.querySelector("#finishRoundButton"),
+  leaderboardList: document.querySelector("#leaderboardList"),
+  leaderboardStatus: document.querySelector("#leaderboardStatus"),
   sizeButtons: [...document.querySelectorAll(".size-option")],
   generateButton: document.querySelector("#generateButton"),
   board: document.querySelector("#bingoBoard"),
@@ -40,13 +48,42 @@ let activeSound = null;
 let soundStopTimer;
 let soundPlaybackId = 0;
 let toastTimer;
+let selectedPlayer = "";
+try {
+  const savedPlayer = localStorage.getItem(PLAYER_KEY);
+  if (PLAYERS.includes(savedPlayer)) selectedPlayer = savedPlayer;
+} catch { /* Player selection still works without a preference cache. */ }
+let roundPlayer = "";
+let roundId = "";
+let roundState = "active";
+let finishingRound = false;
+let roundError = "";
+
+leaderboard.subscribe(({ scores, status }) => {
+  elements.leaderboardStatus.textContent = status;
+  elements.leaderboardList.replaceChildren();
+  for (const score of scores) {
+    const item = document.createElement("li");
+    item.className = "leaderboard-row";
+    const rank = document.createElement("span");
+    rank.className = "leaderboard-rank";
+    rank.textContent = score.rank + ".";
+    const name = document.createElement("strong");
+    name.textContent = score.player;
+    const total = document.createElement("span");
+    total.className = "leaderboard-total";
+    total.textContent = score.bingos + " Bingos";
+    item.append(rank, name, total);
+    elements.leaderboardList.append(item);
+  }
+});
 
 store.subscribe((state) => {
   fields = state.fields;
   bonusFields = state.bonusFields;
   elements.headerCount.textContent = fields.length;
 
-  if (currentBoard.length && !currentBonus && bonusFields.length) {
+  if (currentBoard.length && !currentBonus && bonusFields.length && roundState === "active" && !finishingRound) {
     currentBonus = pickRandom(bonusFields);
     bonusMarked = false;
     renderBonus();
@@ -63,6 +100,9 @@ function saveBoard() {
       marked: [...markedCells],
       bonusField: currentBonus,
       bonusMarked,
+      roundId,
+      roundPlayer,
+      roundState,
     }),
   );
 }
@@ -76,6 +116,11 @@ function restoreBoard() {
       Array.isArray(saved.fields) &&
       saved.fields.length === saved.size * saved.size
     ) {
+      roundId = typeof saved.roundId === "string" && /^[a-zA-Z0-9_-]{20,80}$/.test(saved.roundId)
+        ? saved.roundId : crypto.randomUUID();
+      roundPlayer = PLAYERS.includes(saved.roundPlayer) ? saved.roundPlayer : "";
+      if (roundPlayer) selectedPlayer = roundPlayer;
+      roundState = roundPlayer && ["pending", "completed"].includes(saved.roundState) ? saved.roundState : "active";
       boardSize = saved.size;
       currentBoard = saved.fields;
       markedCells = new Set(
@@ -87,7 +132,7 @@ function restoreBoard() {
       );
       currentBonus = typeof saved.bonusField === "string" ? saved.bonusField : "";
       bonusMarked = Boolean(currentBonus && saved.bonusMarked);
-      if (!currentBonus && bonusFields.length) currentBonus = pickRandom(bonusFields);
+      if (!currentBonus && bonusFields.length && roundState === "active") currentBonus = pickRandom(bonusFields);
       updateSizeButtons();
       renderBoard();
       renderBonus();
@@ -112,6 +157,12 @@ function pickRandom(items) {
 }
 
 function generateBoard() {
+  if (finishingRound || roundState === "pending") return;
+  if (!selectedPlayer) {
+    showToast("Wähle zuerst Daniel, Fabian oder Tim aus.");
+    elements.playerButtons[0]?.focus();
+    return;
+  }
   const needed = boardSize * boardSize;
   elements.boardStatus.classList.remove("is-success");
 
@@ -121,6 +172,10 @@ function generateBoard() {
     return;
   }
 
+  roundId = crypto.randomUUID();
+  roundPlayer = selectedPlayer;
+  roundState = "active";
+  roundError = "";
   currentBoard = shuffle(fields).slice(0, needed);
   markedCells = new Set();
   currentBonus = pickRandom(bonusFields);
@@ -159,8 +214,9 @@ async function requestConfirmation({ title, message, confirmLabel }) {
 }
 
 async function confirmAndGenerateBoard() {
+  if (finishingRound || roundState === "pending") return;
   if (
-    currentBoard.length &&
+    currentBoard.length && roundState === "active" &&
     !(await requestConfirmation({
       title: "Neues Board mischen?",
       message: "Das aktuelle Board, das Bonus-Feld und alle Markierungen werden unwiderruflich ersetzt.",
@@ -212,9 +268,11 @@ function renderBoard() {
   });
 
   updateWinningLines();
+  renderRoundControls();
 }
 
 function toggleCell(index) {
+  if (!canEditRound()) return;
   if (markedCells.has(index)) markedCells.delete(index);
   else markedCells.add(index);
 
@@ -231,6 +289,7 @@ function toggleCell(index) {
 }
 
 function rerollCell(index) {
+  if (!canEditRound()) return;
   const availableFields = fields.filter((field) => !currentBoard.includes(field));
   if (!availableFields.length) {
     showToast("Kein unbenutztes Feld verfügbar · ergänze den Pool");
@@ -247,6 +306,7 @@ function rerollCell(index) {
 }
 
 async function confirmAndRerollCell(index) {
+  if (!canEditRound()) return;
   const field = currentBoard[index];
   if (!field) return;
 
@@ -275,9 +335,11 @@ function renderBonus() {
     elements.bonusText.textContent = "Wird zusammen mit dem nächsten Board gezogen.";
     elements.bonusResult.textContent = "";
   }
+  renderRoundControls();
 }
 
 function toggleBonus() {
+  if (!canEditRound()) return;
   if (!currentBonus) return;
   bonusMarked = !bonusMarked;
   renderBonus();
@@ -323,6 +385,7 @@ function updateWinningLines(allowSound = false) {
   }
   winningLineCount = winningLines.length;
   boardWasFull = boardIsFull;
+  renderRoundControls();
 }
 
 function playBingoSound(key, message, maxSeconds) {
@@ -376,9 +439,10 @@ function stopBingoSound() {
 }
 
 async function setBoardSize(size) {
+  if (finishingRound || roundState === "pending") return;
   if (size === boardSize) return;
   if (
-    currentBoard.length &&
+    currentBoard.length && roundState === "active" &&
     !(await requestConfirmation({
       title: `Auf ${size} × ${size} wechseln?`,
       message: "Das aktuelle Board, das Bonus-Feld und alle Markierungen werden dabei gelöscht.",
@@ -390,6 +454,10 @@ async function setBoardSize(size) {
   }
 
   boardSize = size;
+  roundError = "";
+  roundId = "";
+  roundPlayer = "";
+  roundState = "active";
   currentBoard = [];
   markedCells = new Set();
   currentBonus = "";
@@ -415,6 +483,85 @@ function updateSizeButtons() {
   });
 }
 
+function canEditRound() {
+  return Boolean(currentBoard.length && roundPlayer && roundState === "active" && !finishingRound);
+}
+
+function renderRoundControls() {
+  const hasBoard = currentBoard.length > 0;
+  const locked = !canEditRound();
+  const score = winningLineCount + Number(Boolean(currentBonus && bonusMarked));
+  for (const button of elements.playerButtons) {
+    const active = button.dataset.player === (hasBoard && roundState !== "completed" ? roundPlayer : selectedPlayer);
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+    button.disabled = finishingRound || (hasBoard && roundState !== "completed" && Boolean(roundPlayer));
+  }
+  elements.board.querySelectorAll("button").forEach((button) => { button.disabled = locked; });
+  elements.bonusButton.disabled = locked || !currentBonus;
+  elements.generateButton.disabled = finishingRound || roundState === "pending" || !selectedPlayer;
+  elements.sizeButtons.forEach((button) => { button.disabled = finishingRound || roundState === "pending"; });
+  elements.finishButton.hidden = !hasBoard;
+  elements.finishButton.disabled = finishingRound || !roundPlayer || roundState === "completed";
+  elements.finishButton.textContent = finishingRound ? "Bitte warten …"
+    : roundState === "completed" ? "Runde gespeichert ✓"
+    : roundState === "pending" ? "Ergebnis erneut speichern" : "Fertig · Runde abschließen";
+  elements.roundInfo.textContent = roundError || (!hasBoard
+    ? "Wähle deinen Namen, bevor du ein Board mischst."
+    : !roundPlayer ? "Wähle deinen Namen, um dieses Board weiterzuspielen."
+    : roundState === "completed" ? roundPlayer + " · Runde abgeschlossen · " + score + " Bingos gespeichert"
+    : roundState === "pending" ? roundPlayer + " · " + score + " Bingos · Ergebnis noch nicht bestätigt. Bitte erneut speichern."
+    : roundPlayer + " · Aktuelle Runde: " + score + " Bingos (inklusive Bonus)");
+}
+
+function selectPlayer(player) {
+  if (!PLAYERS.includes(player) || finishingRound
+    || (currentBoard.length && roundState !== "completed" && roundPlayer)) return;
+  selectedPlayer = player;
+  try { localStorage.setItem(PLAYER_KEY, player); } catch { /* Optional preference cache. */ }
+  if (currentBoard.length && !roundPlayer) {
+    roundPlayer = player;
+    saveBoard();
+  }
+  renderRoundControls();
+}
+
+async function finishRound() {
+  if (!currentBoard.length || !roundPlayer || roundState === "completed" || finishingRound) return;
+  finishingRound = true;
+  roundError = "";
+  renderRoundControls();
+  try {
+    const score = winningLineCount + Number(Boolean(currentBonus && bonusMarked));
+    if (roundState !== "pending" && !(await requestConfirmation({
+      title: "Runde abschließen?",
+      message: roundPlayer + " erhält " + score + " Bingos inklusive Bonus. Danach ist dieses Board abgeschlossen.",
+      confirmLabel: "Runde speichern",
+    }))) return;
+    roundState = "pending";
+    // Persist the fixed ID and frozen result before making a network request.
+    saveBoard();
+    stopBingoSound();
+    renderRoundControls();
+    await leaderboard.finishRound({
+      id: roundId,
+      player: roundPlayer,
+      boardSize,
+      bingos: winningLineCount,
+      bonusBingo: Boolean(currentBonus && bonusMarked),
+    });
+    roundState = "completed";
+    saveBoard();
+    showToast(roundPlayer + " · " + score + " Bingos gespeichert!");
+  } catch (error) {
+    roundError = error.message || "Ergebnis konnte nicht gespeichert werden. Bitte erneut versuchen.";
+    showToast(roundError);
+  } finally {
+    finishingRound = false;
+    renderRoundControls();
+  }
+}
+
 function showToast(message) {
   window.clearTimeout(toastTimer);
   elements.toast.textContent = message;
@@ -425,6 +572,10 @@ function showToast(message) {
 elements.sizeButtons.forEach((button) => {
   button.addEventListener("click", () => setBoardSize(Number(button.dataset.size)));
 });
+elements.playerButtons.forEach((button) => {
+  button.addEventListener("click", () => selectPlayer(button.dataset.player));
+});
+elements.finishButton.addEventListener("click", finishRound);
 elements.generateButton.addEventListener("click", confirmAndGenerateBoard);
 elements.bonusButton.addEventListener("click", toggleBonus);
 elements.board.addEventListener("click", (event) => {

@@ -1,10 +1,11 @@
-const CACHE_NAME = "smash-bingo-v11";
+const CACHE_NAME = "smash-bingo-v12";
 const APP_FILES = [
   "./",
   "index.html",
   "pool.html",
   "styles.css",
   "board.js",
+  "leaderboard-store.js",
   "pool.js",
   "pool-store.js",
   "firebase-config.js",

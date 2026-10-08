@@ -1953,3 +1953,89 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Player selection, finished rounds, and shared standings. */
+.player-picker {
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+}
+.player-picker legend {
+  margin-bottom: 9px;
+  font-weight: 800;
+}
+.player-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.player-option {
+  min-height: 48px;
+  padding: 10px 4px;
+  color: var(--ink);
+  font-weight: 800;
+  background: var(--paper);
+  border: 2px solid var(--line);
+}
+.player-option.is-active {
+  color: white;
+  background: var(--red);
+  border-color: var(--red-dark);
+}
+.player-option:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+.round-info,
+.leaderboard-status,
+.leaderboard-note {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.round-info {
+  min-height: 2.5em;
+  margin: 0 0 16px;
+}
+.finish-round-button {
+  margin-bottom: 10px;
+  background: var(--success);
+}
+.primary-button:disabled,
+.size-option:disabled,
+.player-option:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.player-option.is-active:disabled { opacity: 1; }
+.bingo-cell-toggle:disabled,
+.reroll-cell:disabled { cursor: default; }
+.reroll-cell:disabled { opacity: 0.4; }
+.leaderboard-panel {
+  min-width: 0;
+  margin-top: 28px;
+  padding: clamp(18px, 4vw, 30px);
+  background: var(--surface);
+  border-top: 6px solid var(--gold);
+  box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.14);
+}
+.leaderboard-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+.leaderboard-rank { font-weight: 900; color: var(--muted); }
+.leaderboard-row:first-child .leaderboard-rank { color: var(--red); }
+.leaderboard-total { font-weight: 800; }
+.leaderboard-status { margin: 16px 0 6px; }
+.leaderboard-note { margin: 0; color: var(--muted); }

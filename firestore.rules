@@ -23,6 +23,80 @@ service cloud.firestore {
       }
     }
 
+    // Unveränderliche Rundenergebnisse für Daniel, Fabian und Tim.
+    match /smashBingoRounds/{roundId} {
+      allow get, list: if true;
+      allow update, delete: if false;
+      allow create: if roundId.matches('^[a-zA-Z0-9_-]{20,80}
+    match /schafkopfRooms/{roomId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function validRoomCode() {
+        return roomId.matches('^[A-Z2-9]{5}$');
+      }
+
+      function validRoomDocument() {
+        return request.resource.data.keys().hasOnly([
+          'schemaVersion',
+          'ownerId',
+          'state',
+          'revision',
+          'createdAt',
+          'updatedAt',
+          'updatedBy'
+        ])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.state is map
+        && request.resource.data.revision is int
+        && request.resource.data.revision > 0
+        && request.resource.data.ownerId is string
+        && request.resource.data.updatedBy == request.auth.uid;
+      }
+
+      allow create: if signedIn()
+        && validRoomCode()
+        && validRoomDocument()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      // Ein Raum kann nur mit bekanntem Raumcode geöffnet werden.
+      // Das Auflisten aller Räume bleibt gesperrt.
+      allow get: if signedIn() && validRoomCode();
+      allow list: if false;
+
+      allow update: if signedIn()
+        && validRoomCode()
+        && validRoomDocument()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.ownerId;
+    }
+
+    // Alles andere bleibt gesperrt.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+)
+        && request.resource.data.keys().hasAll(['player', 'boardSize', 'bingos', 'bonusBingo', 'completedAt'])
+        && request.resource.data.keys().hasOnly(['player', 'boardSize', 'bingos', 'bonusBingo', 'completedAt'])
+        && request.resource.data.player in ['Daniel', 'Fabian', 'Tim']
+        && request.resource.data.boardSize in [4, 5]
+        && request.resource.data.bingos is int
+        && request.resource.data.bingos >= 0
+        && request.resource.data.bingos <= 2 * request.resource.data.boardSize + 2
+        && request.resource.data.bonusBingo is bool
+        && request.resource.data.completedAt == request.time;
+    }
+
     // Gemeinsame Schafkopf-Räume.
     match /schafkopfRooms/{roomId} {
       function signedIn() {

@@ -56,6 +56,16 @@
           </div>
         </div>
 
+        <fieldset class="player-picker">
+          <legend>Wer spielt?</legend>
+          <div class="player-options">
+            <button class="player-option" type="button" data-player="Daniel" aria-pressed="false">Daniel</button>
+            <button class="player-option" type="button" data-player="Fabian" aria-pressed="false">Fabian</button>
+            <button class="player-option" type="button" data-player="Tim" aria-pressed="false">Tim</button>
+          </div>
+        </fieldset>
+        <p id="roundInfo" class="round-info" role="status" aria-live="polite"></p>
+
         <div id="boardEmpty" class="board-empty">
           <div class="empty-icon" aria-hidden="true">✦</div>
           <h3>Bereit für die nächste Runde?</h3>
@@ -78,6 +88,7 @@
         </section>
 
         <div id="boardStatus" class="board-status" role="status" aria-live="polite"></div>
+        <button id="finishRoundButton" class="primary-button finish-round-button" type="button" hidden>Fertig · Runde abschließen</button>
         <button id="generateButton" class="primary-button" type="button">
           <span aria-hidden="true">↻</span>
           Neues Board mischen
@@ -88,10 +99,22 @@
         </div>
       </section>
 
+      <section class="leaderboard-panel" aria-labelledby="leaderboardHeading">
+        <div class="panel-heading">
+          <div>
+            <p class="step-label"><span>02</span> Gesamtwertung</p>
+            <h2 id="leaderboardHeading">Leaderboard</h2>
+          </div>
+        </div>
+        <ol id="leaderboardList" class="leaderboard-list" aria-label="Bingos je Spieler"></ol>
+        <p id="leaderboardStatus" class="leaderboard-status" role="status" aria-live="polite">Rangliste wird geladen …</p>
+        <p class="leaderboard-note">Jede abgeschlossene Runde zählt. Eine fertige Linie = ein Bingo, erfüllter Bonus = ein zusätzliches Bingo.</p>
+      </section>
+
       <section class="tier-list-panel" aria-labelledby="tierListHeading">
         <div class="tier-list-heading">
           <div>
-            <p class="step-label"><span>02</span> Meta-Check</p>
+            <p class="step-label"><span>03</span> Meta-Check</p>
             <h2 id="tierListHeading">Offizielle Tier List</h2>
           </div>
           <span class="tier-list-edition">2026</span>
