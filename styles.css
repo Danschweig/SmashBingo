@@ -2039,3 +2039,34 @@ button {
 .leaderboard-total { font-weight: 800; }
 .leaderboard-status { margin: 16px 0 6px; }
 .leaderboard-note { margin: 0; color: var(--muted); }
+
+.leaderboard-edit-button {
+  min-height: 44px;
+  padding: 9px 18px;
+  color: white;
+  background: var(--ink);
+  border: 0;
+  font-weight: 800;
+}
+.leaderboard-edit-button:disabled { opacity: 0.5; cursor: default; }
+.leaderboard-edit-card { text-align: left; }
+.leaderboard-edit-card h2 { margin-bottom: 20px; }
+.leaderboard-edit-card label {
+  display: block;
+  margin: 16px 0 6px;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+.leaderboard-edit-card input {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: white;
+  border: 2px solid var(--line);
+  font-size: 1rem;
+}
+.leaderboard-edit-card input:focus-visible { outline: 3px solid var(--gold); }
+.leaderboard-edit-card .confirm-dialog-actions { margin-top: 18px; }
+.leaderboard-edit-error { min-height: 1.5em; color: var(--red-dark); font-size: 0.85rem; }

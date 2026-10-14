@@ -24,6 +24,18 @@ Nach dem Abschluss bleiben die Felder gesperrt; für die nächste Runde mischst 
 
 Die Namensauswahl verwendet wie der bisherige Pool keinen Login; sie ist für eure Freundesgruppe gedacht und verifiziert die Identität nicht.
 
+### Leaderboard manuell korrigieren
+
+Mit **Edit** öffnest du die Passwortabfrage. Nach Eingabe von **Schiss** kannst du die Gesamt-Bingos für Daniel, Fabian und Tim auf ganze Zahlen ab null setzen. Der Button ist verfügbar, sobald Rundenergebnisse und Korrekturen aus Firebase live geladen sind.
+
+Die Freischaltung gilt nur für einen Speicherversuch. Beim Speichern wird sie sofort verbraucht, auch wenn die Übertragung fehlschlägt. Nach Abbrechen, Neuladen, Verlassen der Seite oder spätestens fünf Minuten ist ebenfalls eine erneute Passworteingabe nötig. Es wird kein Admin-Status in Cookies oder im lokalen Speicher abgelegt.
+
+Korrekturen werden separat in `smashBingo/leaderboardAdjustments` gespeichert; die ursprünglichen Rundenergebnisse bleiben erhalten. Die App speichert die Differenz zum beim Freischalten angezeigten Gesamtstand. Während der Bearbeitung neu abgeschlossene Runden zählen dadurch zusätzlich. Wenn jemand anderes zwischenzeitlich eine Korrektur speichert, wird ein veralteter Speicherversuch abgelehnt; öffne Edit dann erneut und prüfe den aktuellen Stand.
+
+**Zum Aktivieren:** Die gesamte aktualisierte `firestore.rules` erneut in der Firebase Console veröffentlichen und alle App-Dateien einschließlich `leaderboard-editor.js` zu GitHub Pages pushen. Die Regeln für den Pool und für Schafkopf-Räume bleiben unverändert.
+
+**Grenze der Passwortabfrage:** In dieser statischen App ist das Passwort eine Bedienungssperre und im ausgelieferten JavaScript einsehbar. Firebase prüft die Struktur der Korrekturen, aber keinen Admin-Login. Gegen gezielte Manipulationen wäre eine serverseitige Anmeldung erforderlich.
+
 ## Warum Firebase nötig ist
 
 GitHub Pages liefert nur statische Dateien aus und besitzt keine Datenbank. `localStorage` gilt immer nur für einen einzelnen Browser. Damit mehrere Handys dieselbe Liste sehen, wird eine externe Datenbank benötigt. Diese Anwendung ist bereits für Cloud Firestore vorbereitet.
@@ -39,7 +51,7 @@ Ohne Firebase-Konfiguration läuft sie automatisch im lokalen Modus. Auf der Poo
 5. Öffne in Firestore den Tab **Rules**, kopiere den Inhalt aus [`firestore.rules`](firestore.rules) hinein und klicke auf **Publish**.
 6. Committe und pushe die Änderungen zu GitHub Pages. Beim ersten Aufruf wird der bisher lokale Pool als gemeinsamer Pool angelegt.
 
-Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln begrenzen den normalen Pool auf 200 sowie den Bonus-Pool auf 100 Einträge und verbieten das Löschen des Pool-Dokuments. Für die Rangliste erlauben sie ausschließlich neue, gültige Rundenergebnisse; Änderungen und Löschungen sind gesperrt. Nach diesem Update müssen die geänderten Regeln erneut in der Firebase Console veröffentlicht werden, bevor das Leaderboard genutzt werden kann.
+Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln begrenzen den normalen Pool auf 200 sowie den Bonus-Pool auf 100 Einträge und verbieten das Löschen des Pool-Dokuments. Für die Rangliste erlauben sie neue, gültige Rundenergebnisse und ein separates Korrekturdokument. Änderungen und Löschungen von Rundenergebnissen sind gesperrt. Nach diesem Update müssen die geänderten Regeln erneut in der Firebase Console veröffentlicht werden, bevor das Leaderboard genutzt werden kann.
 
 Beim Erreichen von zwei Bingo-Linien spielen die ersten vier Sekunden von `assets/Double-Bingo.mp3`, bei drei Linien `assets/triple-bingo.mp3`, bei fünf Linien `assets/5-bingo.mp3` und beim vollständig markierten Board `assets/Alle Voll.mp3`. Das Bonus-Feld zählt separat. Überschreitet ein Klick mehrere Schwellen, hat das volle Board Vorrang, danach fünf, drei und zwei Linien. Beim Wiederherstellen des Boards bleiben die Sounds aus; fällt der Stand unter eine Schwelle, kann sie erneut ausgelöst werden.
 
@@ -69,6 +81,7 @@ Mit Node.js lassen sich die Regressionstests ohne zusätzliche Pakete ausführen
 
 ```powershell
 node tests/leaderboard.test.mjs
+node tests/leaderboard-editor.test.mjs
 ```
 
-Die Tests prüfen Punkte und Gleichstände, doppelte beziehungsweise konkurrierende Speicherungen, Spielerwechsel vor der Abgabe, feste Zuordnung beim Speichern, abgeschlossene Boards, Wiederherstellung, Speicherausfälle und alte Boards mit simuliertem Firestore und DOM. Die Firebase-Regeln und die Darstellung auf echten Handys müssen nach der Veröffentlichung zusätzlich geprüft werden.
+Die Tests prüfen Punkte und Gleichstände, doppelte beziehungsweise konkurrierende Speicherungen, Spielerwechsel vor der Abgabe, feste Zuordnung beim Speichern, abgeschlossene Boards, Wiederherstellung, Speicherausfälle und alte Boards mit simuliertem Firestore und DOM. Außerdem prüfen sie manuelle Korrekturen, konkurrierende Bearbeitungen, den Passwortdialog und das Ende der Freischaltung bei Speichern, Abbrechen und Zeitablauf. Ein Dateivergleich schützt die ursprünglichen Pool- und Schafkopf-Regeln. Die Firebase-Regeln und die Darstellung auf echten Handys müssen nach der Veröffentlichung zusätzlich geprüft werden.

@@ -1,9 +1,11 @@
 import { createPoolStore } from "./pool-store.js";
 import { PLAYERS, createLeaderboardStore } from "./leaderboard-store.js";
+import { createLeaderboardEditor } from "./leaderboard-editor.js";
 
 const BOARD_KEY = "smash-bingo-board-v1";
 const store = createPoolStore();
 const leaderboard = createLeaderboardStore();
+createLeaderboardEditor(leaderboard);
 const PLAYER_KEY = "smash-bingo-player-v1";
 
 const elements = {

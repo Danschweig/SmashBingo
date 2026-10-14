@@ -39,6 +39,29 @@ service cloud.firestore {
         && request.resource.data.completedAt == request.time;
     }
 
+    // Manuelle Bingo-Korrekturen; getrennt von Rundenergebnissen und Schafkopf.
+    // Die Passwortabfrage in der statischen App ist nur eine Bedienungssperre.
+    match /smashBingo/leaderboardAdjustments {
+      allow get: if true;
+      allow list, delete: if false;
+      allow create: if validAdjustments() && request.resource.data.revision == 1;
+      allow update: if validAdjustments()
+        && request.resource.data.revision == resource.data.revision + 1;
+
+      function validAdjustments() {
+        return request.resource.data.keys().hasAll(['Daniel', 'Fabian', 'Tim', 'revision', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['Daniel', 'Fabian', 'Tim', 'revision', 'updatedAt'])
+          && request.resource.data.Daniel is int
+          && request.resource.data.Daniel >= -1000000000 && request.resource.data.Daniel <= 1000000000
+          && request.resource.data.Fabian is int
+          && request.resource.data.Fabian >= -1000000000 && request.resource.data.Fabian <= 1000000000
+          && request.resource.data.Tim is int
+          && request.resource.data.Tim >= -1000000000 && request.resource.data.Tim <= 1000000000
+          && request.resource.data.revision is int && request.resource.data.revision > 0
+          && request.resource.data.updatedAt == request.time;
+      }
+    }
+
     // Gemeinsame Schafkopf-Räume.
     match /schafkopfRooms/{roomId} {
       function signedIn() {

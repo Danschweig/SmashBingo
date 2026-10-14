@@ -57,6 +57,28 @@ storeContext.round = { ...round, id: randomUUID(), player: "Tim" };
 await evaluate("recordRound(api, db, round)");
 assert.equal(writes, 2, "Different rounds must not overwrite one another");
 
+storeContext.edit = { revision: 0, base: { Daniel: 4, Fabian: 0, Tim: 4 }, values: { Daniel: 2, Fabian: 5, Tim: 4 } };
+await evaluate("recordLeaderboardAdjustment(api, db, edit)");
+const correction = documents.get("smashBingo/leaderboardAdjustments");
+assert.equal(correction.Daniel, -2);
+assert.equal(correction.Fabian, 5);
+assert.equal(correction.Tim, 0);
+assert.equal(correction.revision, 1);
+assert.equal(documents.size, 3, "Corrections must not delete or replace round results");
+await assert.rejects(evaluate("recordLeaderboardAdjustment(api, db, edit)"), /inzwischen bearbeitet/);
+storeContext.invalidEdit = { revision: 1, base: { Daniel: 2, Fabian: 5, Tim: 4 }, values: { Daniel: -1, Fabian: 5, Tim: 4 } };
+await assert.rejects(evaluate("recordLeaderboardAdjustment(api, db, invalidEdit)"));
+storeContext.adjustments = correction;
+storeContext.rounds = [round, { ...round, id: randomUUID(), bingos: 5, bonusBingo: false }];
+assert.equal(evaluate("calculateLeaderboard(rounds, adjustments)").find((score) => score.player === "Daniel").bingos, 7,
+  "New rounds finished during editing remain added to the corrected total");
+storeContext.edit = { revision: 1, base: { Daniel: 2, Fabian: 5, Tim: 4 }, values: { Daniel: 3, Fabian: 5, Tim: 4 } };
+const simultaneousEdits = await Promise.allSettled([
+  evaluate("recordLeaderboardAdjustment(api, db, edit)"), evaluate("recordLeaderboardAdjustment(api, db, edit)"),
+]);
+assert.equal(simultaneousEdits.filter((result) => result.status === "fulfilled").length, 1);
+assert.equal(documents.get("smashBingo/leaderboardAdjustments").revision, 2);
+
 const boardSource = (await fs.readFile(new URL("board.js", root), "utf8")).replace(/^import .*;\r?\n/gm, "");
 function element() {
   return {
@@ -97,6 +119,7 @@ function boardHarness(savedBoard, finishAction = async () => {}) {
     window: { confirm: () => true, addEventListener() {}, clearTimeout() {}, setTimeout() { return 1; } },
     PLAYERS: ["Daniel", "Fabian", "Tim"],
     createPoolStore: () => ({ subscribe(callback) { callback({ fields: Array.from({ length: 30 }, (_, i) => "Field " + i), bonusFields: ["Bonus"] }); } }),
+    createLeaderboardEditor() {},
     createLeaderboardStore: () => ({ subscribe(callback) { callback({ scores: [], status: "Test" }); }, async finishRound(result) { submitted.push(result); await finishAction(result); } }),
   });
   vm.runInContext(boardSource, context);
@@ -196,7 +219,7 @@ assert.equal(slowSave.submitted[0].player, "Tim");
 console.log("PASS: validation, bonus scoring, ties, immutable records, concurrent retries, player corrections before submission, round locking, reload, failed-save recovery, and legacy boards.");
 
 // The fixture is the complete ruleset supplied by the user for the shared database.
-// Only the separate leaderboard block may be added to that baseline.
+// Only the separate leaderboard blocks may be added to that baseline.
 const rules = (await fs.readFile(new URL("firestore.rules", root), "utf8")).replaceAll("\r\n", "\n");
 const baselineRules = (await fs.readFile(new URL("tests/fixtures/firestore-before-leaderboard.rules", root), "utf8")).replaceAll("\r\n", "\n");
 const leaderboardStart = rules.indexOf("    // Unveränderliche Rundenergebnisse");
@@ -207,7 +230,9 @@ assert.equal(rules.slice(0, leaderboardStart) + rules.slice(schafkopfStart), bas
 assert.equal((rules.match(/match \/schafkopfRooms\//g) || []).length, 1);
 assert.equal((rules.match(/match \/smashBingoRounds\//g) || []).length, 1);
 const leaderboardRules = rules.slice(leaderboardStart, schafkopfStart);
-assert.equal((leaderboardRules.match(/\bmatch\b/g) || []).length, 1, "Leaderboard rules cannot contain other collection matches");
+assert.equal((leaderboardRules.match(/\bmatch\b/g) || []).length, 2, "Only rounds and the correction document belong in leaderboard rules");
+assert.equal((rules.match(/match \/smashBingo\/leaderboardAdjustments/g) || []).length, 1);
+assert(leaderboardRules.includes("request.resource.data.revision == resource.data.revision + 1"));
 assert(leaderboardRules.includes("roundId.matches('^[a-zA-Z0-9_-]{20,80}$')"));
 assert(leaderboardRules.includes("allow update, delete: if false;"));
 // Check delimiters and terminated string literals; this is not a Firebase emulator test.
@@ -221,4 +246,4 @@ for (const character of strippedRules) {
   }
 }
 assert.equal(delimiters.length, 0);
-console.log("PASS: supplied Pool and Schafkopf rules preserved exactly, one isolated leaderboard block, balanced rule structure.");
+console.log("PASS: manual corrections, concurrent-edit conflicts, new rounds retained, supplied Pool and Schafkopf rules preserved exactly, isolated leaderboard rules, balanced rule structure.");

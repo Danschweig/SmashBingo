@@ -105,9 +105,11 @@
             <p class="step-label"><span>02</span> Gesamtwertung</p>
             <h2 id="leaderboardHeading">Leaderboard</h2>
           </div>
+          <button id="leaderboardEditButton" class="leaderboard-edit-button" type="button" disabled>Edit</button>
         </div>
         <ol id="leaderboardList" class="leaderboard-list" aria-label="Bingos je Spieler"></ol>
         <p id="leaderboardStatus" class="leaderboard-status" role="status" aria-live="polite">Rangliste wird geladen …</p>
+        <p id="leaderboardEditStatus" class="leaderboard-status" role="status" aria-live="polite"></p>
         <p class="leaderboard-note">Jede abgeschlossene Runde zählt. Eine fertige Linie = ein Bingo, erfüllter Bonus = ein zusätzliches Bingo.</p>
       </section>
 
@@ -153,6 +155,37 @@
           <button id="confirmDialogAccept" class="confirm-accept-button" type="submit" value="confirm">Bestätigen</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="leaderboardEditDialog" class="confirm-dialog" aria-labelledby="leaderboardEditTitle">
+      <div class="confirm-dialog-card leaderboard-edit-card">
+        <p class="confirm-dialog-kicker">Punkte korrigieren</p>
+        <h2 id="leaderboardEditTitle">Leaderboard bearbeiten</h2>
+        <form id="leaderboardPasswordForm">
+          <label for="leaderboardPassword">Passwort</label>
+          <input id="leaderboardPassword" type="password" autocomplete="off" required />
+          <p id="leaderboardPasswordError" class="leaderboard-edit-error" role="alert"></p>
+          <div class="confirm-dialog-actions">
+            <button class="confirm-cancel-button leaderboard-edit-cancel" type="button">Abbrechen</button>
+            <button class="confirm-accept-button" type="submit">Freischalten</button>
+          </div>
+        </form>
+        <form id="leaderboardEditForm" hidden>
+          <p class="leaderboard-note">Trage die richtigen Gesamt-Bingos ein. Neue Runden während der Bearbeitung zählen zusätzlich.</p>
+          <label for="leaderboardScoreDaniel">Daniel</label>
+          <input id="leaderboardScoreDaniel" type="number" min="0" max="1000000000" step="1" inputmode="numeric" required />
+          <label for="leaderboardScoreFabian">Fabian</label>
+          <input id="leaderboardScoreFabian" type="number" min="0" max="1000000000" step="1" inputmode="numeric" required />
+          <label for="leaderboardScoreTim">Tim</label>
+          <input id="leaderboardScoreTim" type="number" min="0" max="1000000000" step="1" inputmode="numeric" required />
+          <p id="leaderboardEditError" class="leaderboard-edit-error" role="alert"></p>
+          <p class="leaderboard-note">Die Freischaltung endet beim Speichern, Abbrechen oder nach 5 Minuten.</p>
+          <div class="confirm-dialog-actions">
+            <button class="confirm-cancel-button leaderboard-edit-cancel" type="button">Abbrechen</button>
+            <button id="leaderboardEditSave" class="confirm-accept-button" type="submit">Speichern</button>
+          </div>
+        </form>
+      </div>
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
