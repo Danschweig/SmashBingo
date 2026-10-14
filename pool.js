@@ -1,9 +1,11 @@
 import { createPoolStore } from "./pool-store.js";
+import { fieldText, fieldTarget, fieldLabel, sameField } from "./field-model.js";
 
 const store = createPoolStore();
 const elements = {
   form: document.querySelector("#fieldForm"),
   input: document.querySelector("#fieldInput"),
+  target: document.querySelector("#fieldTarget"),
   submitButton: document.querySelector("#fieldForm button"),
   formError: document.querySelector("#formError"),
   list: document.querySelector("#fieldList"),
@@ -45,20 +47,35 @@ function renderFields() {
     const item = document.createElement("li");
     item.className = "field-item";
 
-    if (field === editingField) {
+    if (editingField && sameField(field, JSON.parse(editingField))) {
       item.classList.add("is-editing");
 
       const editForm = document.createElement("form");
-      editForm.className = "edit-field-form";
-      editForm.dataset.field = field;
+      editForm.className = "edit-field-form counted-edit-form";
+      editForm.dataset.field = JSON.stringify(field);
 
       const editInput = document.createElement("input");
       editInput.className = "edit-field-input";
       editInput.type = "text";
       editInput.maxLength = 80;
-      editInput.value = field;
+      editInput.value = fieldText(field);
       editInput.required = true;
-      editInput.setAttribute("aria-label", `„${field}“ bearbeiten`);
+      editInput.setAttribute("aria-label", `„${fieldLabel(field)}“ bearbeiten`);
+
+      const targetLabel = document.createElement("label");
+      targetLabel.className = "edit-target-control";
+      targetLabel.textContent = "Benötigte Anzahl";
+      const targetInput = document.createElement("input");
+      targetInput.className = "edit-field-target";
+      targetInput.type = "number";
+      targetInput.min = "1";
+      targetInput.max = "999";
+      targetInput.step = "1";
+      targetInput.inputMode = "numeric";
+      targetInput.required = true;
+      targetInput.value = fieldTarget(field);
+      targetInput.setAttribute("aria-label", "Benötigte Anzahl");
+      targetLabel.append(targetInput);
 
       const save = document.createElement("button");
       save.className = "edit-save-button";
@@ -74,7 +91,7 @@ function renderFields() {
       cancel.title = "Bearbeitung abbrechen";
       cancel.setAttribute("aria-label", "Bearbeitung abbrechen");
 
-      editForm.append(editInput, save, cancel);
+      editForm.append(editInput, targetLabel, save, cancel);
       item.append(editForm);
       elements.list.append(item);
       return;
@@ -82,7 +99,7 @@ function renderFields() {
 
     const text = document.createElement("span");
     text.className = "field-text";
-    text.textContent = field;
+    text.textContent = fieldLabel(field);
 
     const actions = document.createElement("div");
     actions.className = "field-actions";
@@ -90,16 +107,16 @@ function renderFields() {
     const edit = document.createElement("button");
     edit.className = "edit-button";
     edit.type = "button";
-    edit.dataset.field = field;
-    edit.setAttribute("aria-label", `„${field}“ bearbeiten`);
+    edit.dataset.field = JSON.stringify(field);
+    edit.setAttribute("aria-label", `„${fieldLabel(field)}“ bearbeiten`);
     edit.title = "Feld bearbeiten";
     edit.innerHTML = "&#9998;";
 
     const remove = document.createElement("button");
     remove.className = "delete-button";
     remove.type = "button";
-    remove.dataset.field = field;
-    remove.setAttribute("aria-label", `„${field}“ löschen`);
+    remove.dataset.field = JSON.stringify(field);
+    remove.setAttribute("aria-label", `„${fieldLabel(field)}“ löschen`);
     remove.title = "Feld löschen";
     remove.innerHTML = "&#10005;";
 
@@ -135,7 +152,7 @@ function renderDeletedFields() {
 
     const content = document.createElement("div");
     const text = document.createElement("span");
-    text.textContent = field;
+    text.textContent = fieldLabel(field);
     const countdown = document.createElement("small");
     countdown.className = "restore-countdown";
     countdown.dataset.expiresAt = expiresAt;
@@ -144,9 +161,9 @@ function renderDeletedFields() {
     const restore = document.createElement("button");
     restore.className = "restore-button";
     restore.type = "button";
-    restore.dataset.field = field;
+    restore.dataset.field = JSON.stringify(field);
     restore.textContent = "Wiederherstellen";
-    restore.setAttribute("aria-label", `„${field}“ wiederherstellen`);
+    restore.setAttribute("aria-label", `„${fieldLabel(field)}“ wiederherstellen`);
 
     item.append(content, restore);
     elements.deletedList.append(item);
@@ -248,11 +265,12 @@ function renderSyncState(mode, detail) {
 function updateInteractiveState() {
   const disabled = isBusy || syncMode === "connecting";
   elements.input.disabled = disabled;
+  elements.target.disabled = disabled;
   elements.submitButton.disabled = disabled;
   elements.bonusInput.disabled = disabled;
   elements.bonusSubmitButton.disabled = disabled;
   elements.list
-    .querySelectorAll(".delete-button, .edit-button, .edit-field-input, .edit-save-button, .edit-cancel-button")
+    .querySelectorAll(".delete-button, .edit-button, .edit-field-input, .edit-field-target, .edit-save-button, .edit-cancel-button")
     .forEach((control) => {
       control.disabled = disabled;
     });
@@ -361,7 +379,7 @@ elements.form.addEventListener("submit", async (event) => {
   elements.formError.textContent = "";
   setBusy(true);
   try {
-    await store.addField(elements.input.value);
+    await store.addField(elements.input.value, Number(elements.target.value));
     elements.form.reset();
     showToast("Feld zum gemeinsamen Pool hinzugefügt");
   } catch (error) {
@@ -397,8 +415,9 @@ elements.list.addEventListener("click", async (event) => {
 
   button.disabled = true;
   try {
-    await store.removeField(button.dataset.field);
-    showToast(`„${button.dataset.field}“ entfernt · 5 Min. wiederherstellbar`);
+    const field = JSON.parse(button.dataset.field);
+    await store.removeField(field);
+    showToast(`„${fieldLabel(field)}“ entfernt · 5 Min. wiederherstellbar`);
   } catch (error) {
     button.disabled = false;
     elements.formError.textContent = error.message;
@@ -414,14 +433,16 @@ elements.list.addEventListener("submit", async (event) => {
   elements.formError.textContent = "";
   setBusy(true);
   try {
-    const updatedField = await store.updateField(editForm.dataset.field, editInput.value);
+    const targetInput = editForm.querySelector(".edit-field-target");
+    const updatedField = await store.updateField(JSON.parse(editForm.dataset.field), editInput.value, Number(targetInput.value));
     editingField = null;
-    showToast(`„${updatedField}“ aktualisiert`);
+    showToast(`„${fieldLabel(updatedField)}“ aktualisiert`);
   } catch (error) {
     elements.formError.textContent = error.message;
   } finally {
     setBusy(false);
     if (editingField) editInput.focus();
+    else renderFields();
   }
 });
 
@@ -432,8 +453,9 @@ elements.deletedList.addEventListener("click", async (event) => {
   button.disabled = true;
   elements.formError.textContent = "";
   try {
-    await store.restoreField(button.dataset.field);
-    showToast(`„${button.dataset.field}“ wiederhergestellt`);
+    const field = JSON.parse(button.dataset.field);
+    await store.restoreField(field);
+    showToast(`„${fieldLabel(field)}“ wiederhergestellt`);
   } catch (error) {
     button.disabled = false;
     elements.formError.textContent = error.message;

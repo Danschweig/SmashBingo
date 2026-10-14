@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import vm from "node:vm";
 import { randomUUID } from "node:crypto";
+import { boardHarness } from "./helpers/board-harness.mjs";
 
 const root = new URL("../", import.meta.url);
 const storeSource = await fs.readFile(new URL("leaderboard-store.js", root), "utf8");
@@ -79,52 +80,6 @@ const simultaneousEdits = await Promise.allSettled([
 assert.equal(simultaneousEdits.filter((result) => result.status === "fulfilled").length, 1);
 assert.equal(documents.get("smashBingo/leaderboardAdjustments").revision, 2);
 
-const boardSource = (await fs.readFile(new URL("board.js", root), "utf8")).replace(/^import .*;\r?\n/gm, "");
-function element() {
-  return {
-    dataset: {}, style: {}, children: [], textContent: "", disabled: false, hidden: false,
-    classList: { add() {}, remove() {}, toggle() {} },
-    setAttribute() {}, addEventListener() {}, focus() {},
-    replaceChildren(...children) { this.children = children; },
-    append(...children) { this.children.push(...children); },
-    querySelectorAll(selector) {
-      const all = this.children.flatMap((child) => [child, ...child.querySelectorAll("*")]);
-      if (selector === "button") return all.filter((child) => child.tag === "button");
-      if (selector === ".bingo-cell") return all.filter((child) => child.className === "bingo-cell");
-      return all;
-    },
-    querySelector(selector) {
-      const index = /data-index="(\d+)"/.exec(selector)?.[1];
-      return this.querySelectorAll("*").find((child) => index !== undefined
-        ? child.className === "bingo-cell" && String(child.dataset.index) === index
-        : "." + child.className === selector) || null;
-    },
-    currentTime: 0, pause() {}, play() { return Promise.resolve(); },
-  };
-}
-function boardHarness(savedBoard, finishAction = async () => {}) {
-  const storage = new Map(savedBoard ? [["smash-bingo-board-v1", JSON.stringify(savedBoard)]] : []);
-  const elements = new Map();
-  const players = ["Daniel", "Fabian", "Tim"].map((player) => Object.assign(element(), { dataset: { player } }));
-  const sizes = [4, 5].map((size) => Object.assign(element(), { dataset: { size } }));
-  const submitted = [];
-  const context = vm.createContext({
-    console, crypto: { randomUUID }, navigator: {}, location: { protocol: "https:" },
-    localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) },
-    document: {
-      querySelector(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
-      querySelectorAll(selector) { return selector === ".player-option" ? players : sizes; },
-      createElement(tag) { return Object.assign(element(), { tag }); },
-    },
-    window: { confirm: () => true, addEventListener() {}, clearTimeout() {}, setTimeout() { return 1; } },
-    PLAYERS: ["Daniel", "Fabian", "Tim"],
-    createPoolStore: () => ({ subscribe(callback) { callback({ fields: Array.from({ length: 30 }, (_, i) => "Field " + i), bonusFields: ["Bonus"] }); } }),
-    createLeaderboardEditor() {},
-    createLeaderboardStore: () => ({ subscribe(callback) { callback({ scores: [], status: "Test" }); }, async finishRound(result) { submitted.push(result); await finishAction(result); } }),
-  });
-  vm.runInContext(boardSource, context);
-  return { storage, elements, players, submitted, run: (code) => vm.runInContext(code, context) };
-}
 const board = boardHarness();
 board.run("generateBoard()");
 assert.equal(board.run("currentBoard.length"), 0, "Starting requires player selection");

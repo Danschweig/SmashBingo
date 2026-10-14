@@ -10,6 +10,18 @@ Eine mobile Bingo-Webanwendung für gemeinsame *Super Smash Bros. Ultimate*-Rund
 - Mit Firebase Firestore werden Pool-Änderungen in Echtzeit an alle Geräte übertragen
 - Installierbare Progressive Web App mit Offline-Oberfläche
 
+## Felder mit benötigter Anzahl
+
+Im Felder-Pool kannst du beim Anlegen und Bearbeiten die **benötigte Anzahl** zwischen 1 und 999 einstellen. Zum Beispiel: Text „Jemand fällt erbärmlich runter“, Anzahl **5**. Das Feld erscheint als „5 × Jemand fällt erbärmlich runter“. Gleicher Text mit verschiedenen Zielzahlen ist als eigene Variante erlaubt; identische Kombinationen werden verhindert.
+
+Bei Anzahl **1** bleibt das Feld per Antippen abhakbar und hat keine Zählerbuttons. Ab Anzahl **2** zeigt das Board **−**, **Fortschritt / Ziel** und **+**. Erst beim Zielwert wird das Feld markiert und für Bingo-Linien sowie ein volles Board gewertet. Mit Minus kannst du Fehlzählungen korrigieren; unterhalb des Ziels entfällt die Wertung wieder. Die Anzahl bleibt zwischen null und dem Zielwert.
+
+Der Fortschritt bleibt beim Neuladen und beim Spielerwechsel erhalten. Nach der Punkteabgabe sind die Zähler gesperrt. Neurollen setzt den Zähler dieses Feldes zurück. Pool-Änderungen ändern keine Ziele auf schon laufenden Boards. Der separate Bonus-Pool bleibt eine einmalige Extra-Challenge.
+
+Bestehende Felder als Text bleiben kompatibel und gelten als Ziel **1**. Mehrfach-Felder werden als `{ text, target }` in derselben Firebase-Felderliste gespeichert. Die vorhandenen Pool-Regeln erlauben Listen mit diesen Einträgen bereits; für diese Funktion ist keine Änderung an Firebase-Regeln nötig. Schafkopf und Leaderboard-Regeln bleiben unverändert.
+
+Zum Veröffentlichen auch die neue Datei `field-model.js` mitpushen. Danach die App auf allen Geräten neu laden, damit Pool und Board das neue Feldformat unterstützen.
+
 ## Spieler und Leaderboard
 
 Vor dem Start wählst du Daniel, Fabian oder Tim. Bis zur bestätigten Punkteabgabe kannst du den Namen jederzeit wechseln, ohne das Board oder seine Markierungen zu verlieren. Deine Auswahl und das laufende Board werden auf deinem Gerät gespeichert. Während des Speicherns und bei einem noch unbestätigten Speicherversuch bleibt die Zuordnung fest, damit dieselbe Runde nicht für mehrere Spieler gezählt wird. Ein älteres Board ohne Spieler kann nach der Namensauswahl weitergespielt werden.
@@ -82,6 +94,10 @@ Mit Node.js lassen sich die Regressionstests ohne zusätzliche Pakete ausführen
 ```powershell
 node tests/leaderboard.test.mjs
 node tests/leaderboard-editor.test.mjs
+node tests/field-progress.test.mjs
+node tests/pool-fields.test.mjs
 ```
 
 Die Tests prüfen Punkte und Gleichstände, doppelte beziehungsweise konkurrierende Speicherungen, Spielerwechsel vor der Abgabe, feste Zuordnung beim Speichern, abgeschlossene Boards, Wiederherstellung, Speicherausfälle und alte Boards mit simuliertem Firestore und DOM. Außerdem prüfen sie manuelle Korrekturen, konkurrierende Bearbeitungen, den Passwortdialog und das Ende der Freischaltung bei Speichern, Abbrechen und Zeitablauf. Ein Dateivergleich schützt die ursprünglichen Pool- und Schafkopf-Regeln. Die Firebase-Regeln und die Darstellung auf echten Handys müssen nach der Veröffentlichung zusätzlich geprüft werden.
+
+Die Zählertests prüfen Teilfortschritt, Plus/Minus-Grenzen, Bingo-Schwellen und Sounds, altes und neues Speicherformat, Neurollen, feste Ziele laufender Boards und gesperrte abgeschlossene Runden. Die Pooltests prüfen Anlegen, Bearbeiten, Varianten, doppelte Felder, Wiederherstellung und parallele Änderungen sowohl lokal als auch mit einer simulierten Firebase-Verbindung.

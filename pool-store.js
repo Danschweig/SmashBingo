@@ -1,4 +1,5 @@
 import { firebaseConfig } from "./firebase-config.js";
+import { isBingoField, makeBingoField, sameField } from "./field-model.js";
 
 const STORAGE_KEY = "smash-bingo-fields-v1";
 const BONUS_STORAGE_KEY = "smash-bingo-bonus-fields-v1";
@@ -55,8 +56,8 @@ export const starterBonusFields = [];
 function loadLocalFields() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return Array.isArray(saved) && saved.every((item) => typeof item === "string")
-      ? saved
+    return Array.isArray(saved)
+      ? saved.filter(isBingoField)
       : [...starterFields];
   } catch {
     return [...starterFields];
@@ -82,7 +83,7 @@ function loadDeletedFields() {
       ? saved.filter(
           (item) =>
             item &&
-            typeof item.field === "string" &&
+            isBingoField(item.field) &&
             Number.isFinite(item.deletedAt) &&
             item.deletedAt <= now &&
             item.deletedAt + RESTORE_WINDOW_MS > now,
@@ -149,7 +150,7 @@ export function createPoolStore() {
   }
 
   function storeLocal(nextFields) {
-    fields = [...nextFields];
+    fields = nextFields.filter(isBingoField);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(fields));
     notify();
   }
@@ -194,13 +195,13 @@ export function createPoolStore() {
 
   function rememberDeletedField(field) {
     storeDeletedFields([
-      ...deletedFields.filter((item) => item.field !== field),
+      ...deletedFields.filter((item) => !sameField(item.field, field)),
       { field, deletedAt: Date.now() },
     ]);
   }
 
   function forgetDeletedField(field) {
-    storeDeletedFields(deletedFields.filter((item) => item.field !== field));
+    storeDeletedFields(deletedFields.filter((item) => !sameField(item.field, field)));
   }
 
   async function connectFirebase() {
@@ -247,44 +248,48 @@ export function createPoolStore() {
           });
         });
 
+      const mutateRemoteFields = (mutate) =>
+        firestore.runTransaction(db, async (transaction) => {
+          const documentSnapshot = await transaction.get(poolReference);
+          const remoteFields = documentSnapshot.data()?.fields;
+          if (!Array.isArray(remoteFields) || !remoteFields.every(isBingoField)) {
+            throw new Error("Der gemeinsame Pool konnte nicht geladen werden.");
+          }
+          transaction.update(poolReference, {
+            fields: mutate(remoteFields),
+            updatedAt: firestore.serverTimestamp(),
+          });
+        });
+
       remoteActions = {
         add: (field) =>
-          firestore.updateDoc(poolReference, {
-            fields: firestore.arrayUnion(field),
-            updatedAt: firestore.serverTimestamp(),
+          mutateRemoteFields((remoteFields) => {
+            if (remoteFields.some((item) => sameField(item, field))) throw new Error("Dieses Feld ist bereits im Pool.");
+            if (remoteFields.length >= 200) throw new Error("Der Pool kann höchstens 200 Felder enthalten.");
+            return [...remoteFields, field];
           }),
         remove: (field) =>
-          firestore.updateDoc(poolReference, {
-            fields: firestore.arrayRemove(field),
-            updatedAt: firestore.serverTimestamp(),
-          }),
+          mutateRemoteFields((remoteFields) => remoteFields.filter((item) => !sameField(item, field))),
         replace: (oldField, newField) =>
-          firestore.runTransaction(db, async (transaction) => {
-            const documentSnapshot = await transaction.get(poolReference);
-            const remoteFields = documentSnapshot.data()?.fields;
-            if (!Array.isArray(remoteFields)) throw new Error("Der gemeinsame Pool konnte nicht geladen werden.");
-
-            const fieldIndex = remoteFields.indexOf(oldField);
+          mutateRemoteFields((remoteFields) => {
+            const fieldIndex = remoteFields.findIndex((field) => sameField(field, oldField));
             if (fieldIndex === -1) throw new Error("Dieses Feld wurde zwischenzeitlich gelöscht.");
 
             const duplicateExists = remoteFields.some(
               (item, index) =>
                 index !== fieldIndex &&
-                item.localeCompare(newField, "de", { sensitivity: "base" }) === 0,
+                sameField(item, newField),
             );
             if (duplicateExists) throw new Error("Dieses Feld ist bereits im Pool.");
 
             const nextFields = [...remoteFields];
             nextFields[fieldIndex] = newField;
-            transaction.update(poolReference, {
-              fields: nextFields,
-              updatedAt: firestore.serverTimestamp(),
-            });
+            return nextFields;
           }),
         addMany: (items) =>
-          firestore.updateDoc(poolReference, {
-            fields: firestore.arrayUnion(...items),
-            updatedAt: firestore.serverTimestamp(),
+          mutateRemoteFields((remoteFields) => {
+            const additions = items.filter((item) => !remoteFields.some((field) => sameField(item, field)));
+            return [...remoteFields, ...additions.slice(0, Math.max(0, 200 - remoteFields.length))];
           }),
         addBonus: (field) =>
           mutateRemoteBonusFields((remoteBonusFields) => {
@@ -379,13 +384,11 @@ export function createPoolStore() {
       return () => listeners.delete(listener);
     },
 
-    async addField(value) {
+    async addField(value, target = 1) {
       await ready;
-      const field = normalizeField(value);
-      if (!field) throw new Error("Bitte gib zuerst einen Text ein.");
-      if (field.length > 80) throw new Error("Ein Feld darf höchstens 80 Zeichen lang sein.");
+      const field = makeBingoField(value, target);
 
-      const exists = fields.some((item) => item.localeCompare(field, "de", { sensitivity: "base" }) === 0);
+      const exists = fields.some((item) => sameField(item, field));
       if (exists) throw new Error("Dieses Feld ist bereits im Pool.");
       if (fields.length >= 200) throw new Error("Der Pool kann höchstens 200 Felder enthalten.");
 
@@ -399,32 +402,30 @@ export function createPoolStore() {
 
     async removeField(field) {
       await ready;
-      if (!fields.includes(field)) return;
+      if (!fields.some((item) => sameField(item, field))) return;
 
       if (remoteActions) {
         await remoteActions.remove(field);
       } else {
-        storeLocal(fields.filter((item) => item !== field));
+        storeLocal(fields.filter((item) => !sameField(item, field)));
       }
       rememberDeletedField(field);
     },
 
-    async updateField(oldField, value) {
+    async updateField(oldField, value, target = 1) {
       await ready;
-      const newField = normalizeField(value);
-      if (!newField) throw new Error("Bitte gib einen Text für das Feld ein.");
-      if (newField.length > 80) throw new Error("Ein Feld darf höchstens 80 Zeichen lang sein.");
+      const newField = makeBingoField(value, target);
 
-      const fieldIndex = fields.indexOf(oldField);
+      const fieldIndex = fields.findIndex((field) => sameField(field, oldField));
       if (fieldIndex === -1) throw new Error("Dieses Feld wurde zwischenzeitlich gelöscht.");
 
       const duplicateExists = fields.some(
         (item, index) =>
           index !== fieldIndex &&
-          item.localeCompare(newField, "de", { sensitivity: "base" }) === 0,
+          sameField(item, newField),
       );
       if (duplicateExists) throw new Error("Dieses Feld ist bereits im Pool.");
-      if (newField === oldField) return newField;
+      if (sameField(newField, oldField) && JSON.stringify(newField) === JSON.stringify(oldField)) return newField;
 
       if (remoteActions) {
         await remoteActions.replace(oldField, newField);
@@ -440,11 +441,11 @@ export function createPoolStore() {
       await ready;
       cleanupDeletedFields();
 
-      const deletedField = deletedFields.find((item) => item.field === field);
+      const deletedField = deletedFields.find((item) => sameField(item.field, field));
       if (!deletedField) throw new Error("Die 5-Minuten-Frist für dieses Feld ist abgelaufen.");
 
       const alreadyExists = fields.some(
-        (item) => item.localeCompare(field, "de", { sensitivity: "base" }) === 0,
+        (item) => sameField(item, field),
       );
       if (alreadyExists) {
         forgetDeletedField(field);
@@ -466,7 +467,7 @@ export function createPoolStore() {
     async addExamples() {
       await ready;
       const additions = starterFields.filter(
-        (example) => !fields.some((item) => item.localeCompare(example, "de", { sensitivity: "base" }) === 0),
+        (example) => !fields.some((item) => sameField(item, example)),
       );
       if (!additions.length) return 0;
 

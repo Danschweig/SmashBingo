@@ -2070,3 +2070,31 @@ button {
 .leaderboard-edit-card input:focus-visible { outline: 3px solid var(--gold); }
 .leaderboard-edit-card .confirm-dialog-actions { margin-top: 18px; }
 .leaderboard-edit-error { min-height: 1.5em; color: var(--red-dark); font-size: 0.85rem; }
+
+.counted-add-form { display: grid; grid-template-columns: minmax(0, 1fr) 90px 45px; align-items: stretch; }
+.field-target-control,
+.edit-target-control { display: block; font-size: 0.65rem; font-weight: 800; }
+.field-target-control input { padding: 6px; background: white; font-size: 1rem; }
+.field-target-hint { margin: 8px 0 0; color: var(--muted); font-size: 0.76rem; line-height: 1.4; }
+.counted-edit-form { display: grid; grid-template-columns: 1fr 36px 36px; align-items: end; }
+.counted-edit-form > .edit-field-input { grid-column: 1 / -1; }
+.edit-field-target { display: block; width: 88px; min-height: 36px; padding: 5px 8px; border: 1px solid var(--line); font-size: 1rem; }
+.bingo-board.has-counted-fields { aspect-ratio: auto; }
+.bingo-cell.is-counted { min-height: 112px; }
+.is-counted .bingo-cell-toggle { grid-template-rows: 1fr auto; gap: 5px; padding: 24px 4px 4px; }
+.is-counted .reroll-cell { top: 3px; bottom: auto; right: 3px; }
+.is-counted.is-marked::after { left: 4px; right: auto; }
+.cell-counter { display: grid; width: 100%; grid-template-columns: minmax(20px, 1fr) auto minmax(20px, 1fr); gap: 3px; align-items: center; }
+.cell-count-button { min-width: 0; min-height: 30px; padding: 0; color: var(--ink); background: white; border: 1px solid #aaa; border-radius: 3px; font-size: 1.1rem; font-weight: 900; text-shadow: none; touch-action: manipulation; }
+.cell-count-button:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
+.cell-count-button:disabled { opacity: 0.4; cursor: default; }
+.cell-progress { font-size: 0.65rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) {
+  .counted-add-form { grid-template-columns: minmax(0, 1fr) 76px 38px; gap: 4px; }
+  .counted-add-form button { width: 38px; }
+  .field-target-control { font-size: 0.6rem; }
+  .cell-counter { grid-template-columns: 1fr 1fr; gap: 2px; }
+  .cell-progress { grid-column: 1 / -1; grid-row: 1; font-size: 0.62rem; }
+  .cell-count-button { grid-row: 2; min-height: 28px; }
+  .is-counted .bingo-cell-toggle { padding: 23px 2px 3px; gap: 3px; }
+}

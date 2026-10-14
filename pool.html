@@ -58,7 +58,7 @@
           </div>
         </div>
 
-        <form id="fieldForm" class="add-form">
+        <form id="fieldForm" class="add-form counted-add-form">
           <label class="sr-only" for="fieldInput">Neues Bingo-Feld</label>
           <input
             id="fieldInput"
@@ -69,8 +69,12 @@
             placeholder="z. B. Jemand fällt erbärmlich runter"
             required
           />
+          <label class="field-target-control" for="fieldTarget">Benötigte Anzahl
+            <input id="fieldTarget" name="target" type="number" min="1" max="999" step="1" value="1" inputmode="numeric" required />
+          </label>
           <button type="submit" aria-label="Feld hinzufügen">+</button>
         </form>
+        <p class="field-target-hint">1 = einmal abhaken. Ab 2 zählt ihr auf dem Board mit + und − bis zum Ziel.</p>
         <p id="formError" class="form-error" role="alert"></p>
 
         <div class="pool-toolbar">

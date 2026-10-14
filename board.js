@@ -1,6 +1,7 @@
 import { createPoolStore } from "./pool-store.js";
 import { PLAYERS, createLeaderboardStore } from "./leaderboard-store.js";
 import { createLeaderboardEditor } from "./leaderboard-editor.js";
+import { fieldLabel, fieldTarget, isBingoField, sameField, restoreCellProgress } from "./field-model.js";
 
 const BOARD_KEY = "smash-bingo-board-v1";
 const store = createPoolStore();
@@ -42,6 +43,7 @@ let bonusFields = [];
 let boardSize = 4;
 let currentBoard = [];
 let markedCells = new Set();
+let cellProgress = [];
 let currentBonus = "";
 let bonusMarked = false;
 let winningLineCount = 0;
@@ -100,6 +102,7 @@ function saveBoard() {
       size: boardSize,
       fields: currentBoard,
       marked: [...markedCells],
+      progress: [...cellProgress],
       bonusField: currentBonus,
       bonusMarked,
       roundId,
@@ -116,6 +119,7 @@ function restoreBoard() {
       saved &&
       [4, 5].includes(saved.size) &&
       Array.isArray(saved.fields) &&
+      saved.fields.every(isBingoField) &&
       saved.fields.length === saved.size * saved.size
     ) {
       roundId = typeof saved.roundId === "string" && /^[a-zA-Z0-9_-]{20,80}$/.test(saved.roundId)
@@ -125,13 +129,9 @@ function restoreBoard() {
       roundState = roundPlayer && ["pending", "completed"].includes(saved.roundState) ? saved.roundState : "active";
       boardSize = saved.size;
       currentBoard = saved.fields;
-      markedCells = new Set(
-        Array.isArray(saved.marked)
-          ? saved.marked.filter(
-              (index) => Number.isInteger(index) && index >= 0 && index < currentBoard.length,
-            )
-          : [],
-      );
+      cellProgress = restoreCellProgress(currentBoard, saved.progress, saved.marked);
+      markedCells = new Set(currentBoard.map((field, index) =>
+        cellProgress[index] >= fieldTarget(field) ? index : -1).filter((index) => index >= 0));
       currentBonus = typeof saved.bonusField === "string" ? saved.bonusField : "";
       bonusMarked = Boolean(currentBonus && saved.bonusMarked);
       if (!currentBonus && bonusFields.length && roundState === "active") currentBonus = pickRandom(bonusFields);
@@ -180,6 +180,7 @@ function generateBoard() {
   roundError = "";
   currentBoard = shuffle(fields).slice(0, needed);
   markedCells = new Set();
+  cellProgress = currentBoard.map(() => 0);
   currentBonus = pickRandom(bonusFields);
   bonusMarked = false;
   winningLineCount = 0;
@@ -235,26 +236,56 @@ function renderBoard() {
   elements.board.hidden = false;
   elements.boardEmpty.hidden = true;
   elements.board.dataset.size = boardSize;
+  elements.board.classList.toggle("has-counted-fields", currentBoard.some((field) => fieldTarget(field) > 1));
   const boardTracks = `repeat(${boardSize}, minmax(0, 1fr))`;
   elements.board.style.gridTemplateColumns = boardTracks;
   elements.board.style.gridTemplateRows = boardTracks;
 
   currentBoard.forEach((field, index) => {
+    const target = fieldTarget(field);
+    const counted = target > 1;
+    const text = fieldLabel(field);
     const cell = document.createElement("div");
-    cell.className = "bingo-cell";
+    cell.className = counted ? "bingo-cell is-counted" : "bingo-cell";
     cell.dataset.index = index;
 
-    const toggle = document.createElement("button");
-    toggle.type = "button";
+    const toggle = document.createElement(counted ? "div" : "button");
+    if (!counted) toggle.type = "button";
     toggle.className = "bingo-cell-toggle";
     toggle.dataset.index = index;
-    toggle.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
-    toggle.setAttribute("aria-label", `${field} ${markedCells.has(index) ? "als offen markieren" : "abhaken"}`);
+    if (!counted) toggle.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
+    toggle.setAttribute("aria-label", counted ? text : `${text} ${markedCells.has(index) ? "als offen markieren" : "abhaken"}`);
 
     const label = document.createElement("span");
     label.className = "bingo-cell-label";
-    label.textContent = field;
+    label.textContent = text;
     toggle.append(label);
+
+    if (counted) {
+      const counter = document.createElement("div");
+      counter.className = "cell-counter";
+      const minus = document.createElement("button");
+      minus.type = "button";
+      minus.className = "cell-count-button";
+      minus.dataset.index = index;
+      minus.dataset.delta = "-1";
+      minus.textContent = "−";
+      minus.setAttribute("aria-label", `„${text}“: Anzahl um eins verringern`);
+      const progress = document.createElement("span");
+      progress.className = "cell-progress";
+      progress.textContent = `${cellProgress[index]} / ${target}`;
+      progress.setAttribute("role", "status");
+      progress.setAttribute("aria-label", `${cellProgress[index]} von ${target} erfüllt`);
+      const plus = document.createElement("button");
+      plus.type = "button";
+      plus.className = "cell-count-button";
+      plus.dataset.index = index;
+      plus.dataset.delta = "1";
+      plus.textContent = "+";
+      plus.setAttribute("aria-label", `„${text}“: Anzahl um eins erhöhen`);
+      counter.append(minus, progress, plus);
+      toggle.append(counter);
+    }
 
     const reroll = document.createElement("button");
     reroll.type = "button";
@@ -262,7 +293,7 @@ function renderBoard() {
     reroll.dataset.index = index;
     reroll.textContent = "↻";
     reroll.title = "Feld neu zufällig besetzen";
-    reroll.setAttribute("aria-label", `„${field}“ neu zufällig besetzen`);
+    reroll.setAttribute("aria-label", `„${text}“ neu zufällig besetzen`);
 
     if (markedCells.has(index)) cell.classList.add("is-marked");
     cell.append(toggle, reroll);
@@ -274,25 +305,38 @@ function renderBoard() {
 }
 
 function toggleCell(index) {
-  if (!canEditRound()) return;
-  if (markedCells.has(index)) markedCells.delete(index);
-  else markedCells.add(index);
+  if (!currentBoard[index] || fieldTarget(currentBoard[index]) !== 1) return;
+  changeCellProgress(index, markedCells.has(index) ? -1 : 1);
+}
+
+function changeCellProgress(index, delta) {
+  if (!canEditRound() || !Number.isInteger(index) || !currentBoard[index] || ![-1, 1].includes(delta)) return;
+  const target = fieldTarget(currentBoard[index]);
+  const next = Math.max(0, Math.min(target, (cellProgress[index] || 0) + delta));
+  if (next === cellProgress[index]) return;
+  cellProgress[index] = next;
+  if (next >= target) markedCells.add(index);
+  else markedCells.delete(index);
 
   const cell = elements.board.querySelector(`.bingo-cell[data-index="${index}"]`);
   cell?.classList.toggle("is-marked", markedCells.has(index));
   const toggle = cell?.querySelector(".bingo-cell-toggle");
-  toggle?.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
-  toggle?.setAttribute(
-    "aria-label",
-    `${currentBoard[index]} ${markedCells.has(index) ? "als offen markieren" : "abhaken"}`,
-  );
+  if (target === 1) {
+    toggle?.setAttribute("aria-pressed", markedCells.has(index) ? "true" : "false");
+    toggle?.setAttribute("aria-label", `${fieldLabel(currentBoard[index])} ${markedCells.has(index) ? "als offen markieren" : "abhaken"}`);
+  }
+  const progress = cell?.querySelector(".cell-progress");
+  if (progress) {
+    progress.textContent = `${next} / ${target}`;
+    progress.setAttribute("aria-label", `${next} von ${target} erfüllt`);
+  }
   updateWinningLines(true);
   saveBoard();
 }
 
 function rerollCell(index) {
   if (!canEditRound()) return;
-  const availableFields = fields.filter((field) => !currentBoard.includes(field));
+  const availableFields = fields.filter((field) => !currentBoard.some((existing) => sameField(existing, field)));
   if (!availableFields.length) {
     showToast("Kein unbenutztes Feld verfügbar · ergänze den Pool");
     return;
@@ -302,9 +346,10 @@ function rerollCell(index) {
   const newField = pickRandom(availableFields);
   currentBoard[index] = newField;
   markedCells.delete(index);
+  cellProgress[index] = 0;
   renderBoard();
   saveBoard();
-  showToast(`„${oldField}“ durch „${newField}“ ersetzt`);
+  showToast(`„${fieldLabel(oldField)}“ durch „${fieldLabel(newField)}“ ersetzt`);
 }
 
 async function confirmAndRerollCell(index) {
@@ -314,7 +359,7 @@ async function confirmAndRerollCell(index) {
 
   const confirmed = await requestConfirmation({
     title: "Feld neu rollen?",
-    message: `„${field}“ wird gelöscht und durch ein anderes zufälliges Feld ersetzt.`,
+    message: `„${fieldLabel(field)}“ wird gelöscht und durch ein anderes zufälliges Feld ersetzt.`,
     confirmLabel: "Feld neu rollen",
   });
   if (confirmed) rerollCell(index);
@@ -462,6 +507,7 @@ async function setBoardSize(size) {
   roundState = "active";
   currentBoard = [];
   markedCells = new Set();
+  cellProgress = [];
   currentBonus = "";
   bonusMarked = false;
   winningLineCount = 0;
@@ -500,6 +546,11 @@ function renderRoundControls() {
     button.disabled = finishingRound || roundState === "pending";
   }
   elements.board.querySelectorAll("button").forEach((button) => { button.disabled = locked; });
+  elements.board.querySelectorAll(".cell-count-button").forEach((button) => {
+    const index = Number(button.dataset.index);
+    const delta = Number(button.dataset.delta);
+    button.disabled = locked || (delta < 0 ? cellProgress[index] <= 0 : cellProgress[index] >= fieldTarget(currentBoard[index]));
+  });
   elements.bonusButton.disabled = locked || !currentBonus;
   elements.generateButton.disabled = finishingRound || roundState === "pending" || !selectedPlayer;
   elements.sizeButtons.forEach((button) => { button.disabled = finishingRound || roundState === "pending"; });
@@ -580,6 +631,11 @@ elements.finishButton.addEventListener("click", finishRound);
 elements.generateButton.addEventListener("click", confirmAndGenerateBoard);
 elements.bonusButton.addEventListener("click", toggleBonus);
 elements.board.addEventListener("click", (event) => {
+  const countButton = event.target.closest(".cell-count-button");
+  if (countButton) {
+    changeCellProgress(Number(countButton.dataset.index), Number(countButton.dataset.delta));
+    return;
+  }
   const rerollButton = event.target.closest(".reroll-cell");
   if (rerollButton) {
     confirmAndRerollCell(Number(rerollButton.dataset.index));

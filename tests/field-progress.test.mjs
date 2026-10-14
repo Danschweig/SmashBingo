@@ -1,0 +1,87 @@
+import assert from "node:assert/strict";
+import { randomUUID } from "node:crypto";
+import { boardHarness } from "./helpers/board-harness.mjs";
+import { makeBingoField, fieldLabel, sameField, isBingoField, restoreCellProgress } from "../field-model.js";
+
+const five = makeBingoField("  Jemand fällt   runter ", 5);
+assert.deepEqual(five, { text: "Jemand fällt runter", target: 5 });
+assert.equal(fieldLabel(five), "5 × Jemand fällt runter");
+assert.equal(makeBingoField("Einmal", 1), "Einmal");
+assert(sameField(five, { target: 5, text: "jemand fällt runter" }));
+assert(!sameField(five, makeBingoField("Jemand fällt runter", 3)));
+assert(!sameField(five, "Jemand fällt runter"));
+assert(!isBingoField({ text: "Test", target: 0 }));
+for (const target of [0, -1, 1.5, 1000, NaN, "5"]) assert.throws(() => makeBingoField("Test", target));
+assert.throws(() => makeBingoField(" ", 5));
+assert.deepEqual(restoreCellProgress([five, "Once"], [999, -2]), [5, 0]);
+assert.deepEqual(restoreCellProgress([five, "Once"], [2.5, null]), [0, 0]);
+assert.deepEqual(restoreCellProgress([five, "Once"], undefined, [1, -1, 99]), [0, 1]);
+
+const fields = [five, ...Array.from({ length: 15 }, (_, i) => "Field " + (i + 1))];
+const saved = { size: 4, fields, marked: [1, 2, 3, 4, 8, 12], bonusField: "Bonus", roundPlayer: "Daniel", roundId: randomUUID(), roundState: "active" };
+const board = boardHarness(saved);
+const cell = () => board.elements.get("#bingoBoard").querySelector('.bingo-cell[data-index="0"]');
+const counter = (delta) => cell().querySelectorAll(".cell-count-button").find((button) => Number(button.dataset.delta) === delta);
+assert.equal(cell().querySelectorAll(".cell-count-button").length, 2);
+assert(counter(-1).disabled);
+assert.equal(board.elements.get("#bingoBoard").querySelector('.bingo-cell[data-index="1"]').querySelectorAll(".cell-count-button").length, 0);
+board.run("toggleCell(0)");
+assert.equal(board.run("cellProgress[0]"), 0, "Tapping a counted label cannot bypass its target");
+for (let count = 1; count <= 4; count++) {
+  board.run("changeCellProgress(0, 1)");
+  assert.equal(board.run("cellProgress[0]"), count);
+  assert.equal(board.run("markedCells.has(0)"), false);
+  assert.equal(board.run("winningLineCount"), 0);
+  assert.equal(cell().querySelector(".cell-progress").textContent, count + " / 5");
+}
+const partial = JSON.parse(board.storage.get("smash-bingo-board-v1"));
+assert.equal(partial.progress[0], 4);
+const reloaded = boardHarness(partial);
+assert.equal(reloaded.run("cellProgress[0]"), 4);
+assert.equal(reloaded.run("markedCells.has(0)"), false);
+assert.equal(reloaded.audioPlays.length, 0, "Restoring partial progress must stay silent");
+board.run("changeCellProgress(0, 1)");
+assert.equal(board.run("winningLineCount"), 2);
+assert.equal(board.audioPlays.at(-1), "#doubleBingoSound");
+assert(counter(1).disabled);
+board.run("changeCellProgress(0, 1)");
+assert.equal(board.run("cellProgress[0]"), 5);
+assert.equal(board.audioPlays.length, 1, "Additional clicks at the target cannot replay the milestone");
+board.run("changeCellProgress(0, -1)");
+assert.equal(board.run("markedCells.has(0)"), false);
+assert.equal(board.run("winningLineCount"), 0);
+assert(!counter(1).disabled);
+board.run("changeCellProgress(0, 1)");
+assert.equal(board.run("winningLineCount"), 2);
+
+board.updatePool([makeBingoField("Jemand fällt runter", 2), ...fields.slice(1)]);
+assert.equal(board.run("currentBoard[0].target"), 5, "Pool edits do not change an active board's goal");
+await board.run("finishRound()");
+assert.equal(board.submitted[0].bingos, 2);
+board.run("changeCellProgress(0, -1)");
+assert.equal(board.run("cellProgress[0]"), 5);
+assert(counter(-1).disabled && counter(1).disabled);
+
+const reroll = boardHarness(partial, undefined, [five, { text: five.text, target: 5 }, "Replacement"]);
+reroll.run("rerollCell(0)");
+assert.equal(reroll.run("currentBoard[0]"), "Replacement", "Object copies of an existing field cannot be drawn twice");
+assert.equal(reroll.run("cellProgress[0]"), 0);
+assert.equal(reroll.elements.get("#bingoBoard").querySelectorAll(".cell-count-button").length, 0);
+reroll.run("toggleCell(0)");
+assert.equal(reroll.run("cellProgress[0]"), 1);
+assert.equal(reroll.run("markedCells.has(0)"), true);
+reroll.run("toggleCell(0)");
+assert.equal(reroll.run("cellProgress[0]"), 0);
+
+const pending = boardHarness({ ...partial, roundState: "pending" });
+pending.run("changeCellProgress(0, 1)");
+assert.equal(pending.run("cellProgress[0]"), 4);
+assert(pending.elements.get("#bingoBoard").querySelectorAll(".cell-count-button").every((button) => button.disabled));
+const full = boardHarness({ ...saved, marked: fields.map((_, i) => i).slice(1) });
+for (let i = 0; i < 5; i++) full.run("changeCellProgress(0, 1)");
+assert.equal(full.run("boardWasFull"), true);
+assert.equal(full.run("winningLineCount"), 10);
+assert.equal(full.audioPlays.at(-1), "#fullBoardSound");
+full.run("changeCellProgress(0, -1)");
+assert.equal(full.run("boardWasFull"), false);
+console.log("PASS: target validation, target variants, counter steps/bounds, bingo thresholds and sounds, restore, single-tap fields, reroll reset, fixed board targets, submission locking, full-board scoring.");

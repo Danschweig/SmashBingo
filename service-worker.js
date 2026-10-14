@@ -1,4 +1,4 @@
-const CACHE_NAME = "smash-bingo-v14";
+const CACHE_NAME = "smash-bingo-v15";
 const APP_FILES = [
   "./",
   "index.html",
@@ -9,6 +9,7 @@ const APP_FILES = [
   "leaderboard-editor.js",
   "pool.js",
   "pool-store.js",
+  "field-model.js",
   "firebase-config.js",
   "manifest.webmanifest",
   "icon.svg",
