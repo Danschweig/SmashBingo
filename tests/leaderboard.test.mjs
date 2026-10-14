@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 const root = new URL("../", import.meta.url);
 const storeSource = await fs.readFile(new URL("leaderboard-store.js", root), "utf8");
 const storeContext = vm.createContext({ console });
-vm.runInContext(storeSource.replace(/^import .*;\n/, "").replaceAll("export ", ""), storeContext);
+vm.runInContext(storeSource.replace(/^import .*;\r?\n/, "").replaceAll("export ", ""), storeContext);
 const evaluate = (code) => vm.runInContext(code, storeContext);
 const round = { id: randomUUID(), player: "Daniel", boardSize: 4, bingos: 3, bonusBingo: true };
 storeContext.round = round;
@@ -57,7 +57,7 @@ storeContext.round = { ...round, id: randomUUID(), player: "Tim" };
 await evaluate("recordRound(api, db, round)");
 assert.equal(writes, 2, "Different rounds must not overwrite one another");
 
-const boardSource = (await fs.readFile(new URL("board.js", root), "utf8")).replace(/^import .*;\n/gm, "");
+const boardSource = (await fs.readFile(new URL("board.js", root), "utf8")).replace(/^import .*;\r?\n/gm, "");
 function element() {
   return {
     dataset: {}, style: {}, children: [], textContent: "", disabled: false, hidden: false,
@@ -100,7 +100,7 @@ function boardHarness(savedBoard, finishAction = async () => {}) {
     createLeaderboardStore: () => ({ subscribe(callback) { callback({ scores: [], status: "Test" }); }, async finishRound(result) { submitted.push(result); await finishAction(result); } }),
   });
   vm.runInContext(boardSource, context);
-  return { storage, elements, submitted, run: (code) => vm.runInContext(code, context) };
+  return { storage, elements, players, submitted, run: (code) => vm.runInContext(code, context) };
 }
 const board = boardHarness();
 board.run("generateBoard()");
@@ -109,17 +109,33 @@ board.run('selectPlayer("Daniel"); generateBoard();');
 const originalId = board.run("roundId");
 assert.equal(board.run("roundPlayer"), "Daniel");
 board.run('selectPlayer("Tim")');
-assert.equal(board.run("roundPlayer"), "Daniel", "Player cannot change during a round");
+assert.equal(board.run("roundPlayer"), "Tim", "Player can correct their selection during a round");
+assert(board.players.every((button) => !button.disabled));
 board.run("for (let i = 0; i < 8; i++) toggleCell(i); toggleBonus();");
 assert.equal(board.run("winningLineCount"), 2);
+board.run('selectPlayer("Fabian")');
+assert.equal(board.run("roundPlayer"), "Fabian");
+assert.equal(board.run("roundId"), originalId, "Changing player must keep the same round");
+assert.equal(board.run("markedCells.size"), 8);
+assert.equal(board.run("bonusMarked"), true);
+assert.equal(board.run("winningLineCount"), 2);
+const changedPlayerSave = JSON.parse(board.storage.get("smash-bingo-board-v1"));
+assert.equal(changedPlayerSave.roundPlayer, "Fabian");
+const changedPlayerReload = boardHarness(changedPlayerSave);
+assert.equal(changedPlayerReload.run("roundPlayer"), "Fabian");
+assert.equal(changedPlayerReload.run("markedCells.size"), 8);
+assert(changedPlayerReload.players.every((button) => !button.disabled));
 await Promise.all([board.run("finishRound()"), board.run("finishRound()")]);
 assert.equal(board.submitted.length, 1);
+assert.equal(board.submitted[0].player, "Fabian", "Points belong to the final selected player");
 assert.equal(board.submitted[0].bingos, 2);
 assert.equal(board.submitted[0].bonusBingo, true);
 assert.equal(board.run("roundState"), "completed");
 board.run("toggleCell(0); toggleBonus(); rerollCell(0)");
 assert.equal(board.run("markedCells.size"), 8);
 assert.equal(board.run("bonusMarked"), true);
+board.run('selectPlayer("Daniel")');
+assert.equal(board.run("roundPlayer"), "Fabian", "Completed result retains its original player");
 await board.run("finishRound()");
 assert.equal(board.submitted.length, 1);
 const restored = boardHarness(JSON.parse(board.storage.get("smash-bingo-board-v1")));
@@ -140,6 +156,7 @@ await failed.run("setBoardSize(5)");
 assert.equal(failed.run("markedCells.size"), 1);
 assert.equal(failed.run("roundId"), pending.roundId);
 assert.equal(failed.run("roundPlayer"), "Fabian");
+assert(failed.players.every((button) => button.disabled), "Unconfirmed writes must keep the original player");
 const retry = boardHarness(pending);
 await retry.run("finishRound()");
 assert.equal(retry.submitted[0].id, pending.roundId);
@@ -155,6 +172,8 @@ await canceled.run("finishRound()");
 assert.equal(canceled.run("roundState"), "active");
 assert.equal(canceled.submitted.length, 0);
 assert.equal(canceled.run("finishingRound"), false);
+canceled.run('selectPlayer("Tim")');
+assert.equal(canceled.run("roundPlayer"), "Tim", "Canceling submission permits player corrections again");
 canceled.run("toggleCell(0)");
 assert.equal(canceled.run("markedCells.size"), 1);
 const full = boardHarness();
@@ -162,4 +181,44 @@ full.run('selectPlayer("Tim"); boardSize = 5; generateBoard(); for (let i = 0; i
 await full.run("finishRound()");
 assert.equal(full.submitted[0].bingos, 12);
 assert.equal(full.submitted[0].bonusBingo, true);
-console.log("PASS: validation, bonus scoring, ties, immutable records, concurrent retries, player selection, round locking, reload, failed-save recovery, and legacy boards.");
+let releaseSave;
+const slowSave = boardHarness(undefined, () => new Promise((resolve) => { releaseSave = resolve; }));
+slowSave.run('selectPlayer("Daniel"); generateBoard(); selectPlayer("Tim")');
+const saving = slowSave.run("finishRound()");
+await Promise.resolve();
+assert.equal(slowSave.submitted.length, 1);
+slowSave.run('selectPlayer("Fabian")');
+assert.equal(slowSave.run("roundPlayer"), "Tim", "Player is fixed once submission starts");
+assert(slowSave.players.every((button) => button.disabled));
+releaseSave();
+await saving;
+assert.equal(slowSave.submitted[0].player, "Tim");
+console.log("PASS: validation, bonus scoring, ties, immutable records, concurrent retries, player corrections before submission, round locking, reload, failed-save recovery, and legacy boards.");
+
+// The fixture is the complete ruleset supplied by the user for the shared database.
+// Only the separate leaderboard block may be added to that baseline.
+const rules = (await fs.readFile(new URL("firestore.rules", root), "utf8")).replaceAll("\r\n", "\n");
+const baselineRules = (await fs.readFile(new URL("tests/fixtures/firestore-before-leaderboard.rules", root), "utf8")).replaceAll("\r\n", "\n");
+const leaderboardStart = rules.indexOf("    // Unveränderliche Rundenergebnisse");
+const schafkopfStart = rules.indexOf("    // Gemeinsame Schafkopf-Räume.");
+assert(leaderboardStart > 0 && schafkopfStart > leaderboardStart);
+assert.equal(rules.slice(0, leaderboardStart) + rules.slice(schafkopfStart), baselineRules,
+  "Pool, Schafkopf, and default-deny rules must exactly match the user's original rules");
+assert.equal((rules.match(/match \/schafkopfRooms\//g) || []).length, 1);
+assert.equal((rules.match(/match \/smashBingoRounds\//g) || []).length, 1);
+const leaderboardRules = rules.slice(leaderboardStart, schafkopfStart);
+assert.equal((leaderboardRules.match(/\bmatch\b/g) || []).length, 1, "Leaderboard rules cannot contain other collection matches");
+assert(leaderboardRules.includes("roundId.matches('^[a-zA-Z0-9_-]{20,80}$')"));
+assert(leaderboardRules.includes("allow update, delete: if false;"));
+// Check delimiters and terminated string literals; this is not a Firebase emulator test.
+const strippedRules = rules.replace(/\/\/[^\n]*/g, "").replace(/'(?:\\.|[^'\\\n])*'/g, "");
+assert(!strippedRules.includes("'"), "Rule strings must be terminated on the same line");
+const delimiters = [];
+for (const character of strippedRules) {
+  if ("({[".includes(character)) delimiters.push(character);
+  if (")}]".includes(character)) {
+    assert.equal(delimiters.pop(), { ")": "(", "}": "{", "]": "[" }[character]);
+  }
+}
+assert.equal(delimiters.length, 0);
+console.log("PASS: supplied Pool and Schafkopf rules preserved exactly, one isolated leaderboard block, balanced rule structure.");

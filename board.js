@@ -495,7 +495,7 @@ function renderRoundControls() {
     const active = button.dataset.player === (hasBoard && roundState !== "completed" ? roundPlayer : selectedPlayer);
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
-    button.disabled = finishingRound || (hasBoard && roundState !== "completed" && Boolean(roundPlayer));
+    button.disabled = finishingRound || roundState === "pending";
   }
   elements.board.querySelectorAll("button").forEach((button) => { button.disabled = locked; });
   elements.bonusButton.disabled = locked || !currentBonus;
@@ -515,11 +515,10 @@ function renderRoundControls() {
 }
 
 function selectPlayer(player) {
-  if (!PLAYERS.includes(player) || finishingRound
-    || (currentBoard.length && roundState !== "completed" && roundPlayer)) return;
+  if (!PLAYERS.includes(player) || finishingRound || roundState === "pending") return;
   selectedPlayer = player;
   try { localStorage.setItem(PLAYER_KEY, player); } catch { /* Optional preference cache. */ }
-  if (currentBoard.length && !roundPlayer) {
+  if (currentBoard.length && roundState === "active") {
     roundPlayer = player;
     saveBoard();
   }

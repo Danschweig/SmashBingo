@@ -12,7 +12,7 @@ Eine mobile Bingo-Webanwendung für gemeinsame *Super Smash Bros. Ultimate*-Rund
 
 ## Spieler und Leaderboard
 
-Vor dem Start wählst du Daniel, Fabian oder Tim. Der Name bleibt während der Runde fest; deine Auswahl und das laufende Board werden auf deinem Gerät gespeichert. Ein älteres Board ohne Spieler kann nach der Namensauswahl weitergespielt werden.
+Vor dem Start wählst du Daniel, Fabian oder Tim. Bis zur bestätigten Punkteabgabe kannst du den Namen jederzeit wechseln, ohne das Board oder seine Markierungen zu verlieren. Deine Auswahl und das laufende Board werden auf deinem Gerät gespeichert. Während des Speicherns und bei einem noch unbestätigten Speicherversuch bleibt die Zuordnung fest, damit dieselbe Runde nicht für mehrere Spieler gezählt wird. Ein älteres Board ohne Spieler kann nach der Namensauswahl weitergespielt werden.
 
 Mit **Fertig · Runde abschließen** bestätigst du das Ergebnis: Jede aktuell vollständig markierte Reihe, Spalte und Diagonale zählt als ein Bingo. Ein erfülltes Bonus-Feld zählt zusätzlich als ein Bingo. Ein volles 4 × 4-Board ergibt somit 10 Bingos (mit Bonus 11), ein volles 5 × 5-Board 12 (mit Bonus 13). Wiederholtes Ab- und Anhaken sammelt keine zusätzlichen Punkte. Auch Runden mit null Bingos können abgeschlossen werden.
 
@@ -71,4 +71,4 @@ Mit Node.js lassen sich die Regressionstests ohne zusätzliche Pakete ausführen
 node tests/leaderboard.test.mjs
 ```
 
-Die Tests prüfen Punkte und Gleichstände, doppelte beziehungsweise konkurrierende Speicherungen, feste Spielerzuordnung, abgeschlossene Boards, Wiederherstellung, Speicherausfälle und alte Boards mit simuliertem Firestore und DOM. Die Firebase-Regeln und die Darstellung auf echten Handys müssen nach der Veröffentlichung zusätzlich geprüft werden.
+Die Tests prüfen Punkte und Gleichstände, doppelte beziehungsweise konkurrierende Speicherungen, Spielerwechsel vor der Abgabe, feste Zuordnung beim Speichern, abgeschlossene Boards, Wiederherstellung, Speicherausfälle und alte Boards mit simuliertem Firestore und DOM. Die Firebase-Regeln und die Darstellung auf echten Handys müssen nach der Veröffentlichung zusätzlich geprüft werden.
