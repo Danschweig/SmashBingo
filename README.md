@@ -48,11 +48,11 @@ Korrekturen werden separat in `smashBingo/leaderboardAdjustments` gespeichert; d
 
 **Grenze der Passwortabfrage:** In dieser statischen App ist das Passwort eine Bedienungssperre und im ausgelieferten JavaScript einsehbar. Firebase prüft die Struktur der Korrekturen, aber keinen Admin-Login. Gegen gezielte Manipulationen wäre eine serverseitige Anmeldung erforderlich.
 
-## Spieleabende: Smashung und größter Schiss
+## Spieleabende: Smashung und Schiss
 
-Unter der Rangliste kannst du pro Datum den **Gewinner der Smashung**, die Person mit dem **größten Schiss** (jeweils Daniel, Fabian oder Tim) und einen ganzzahligen **Schiss-Wert von 1 bis 10** eintragen. Das Datum ist frei wählbar, sodass auch ältere Abende nachgetragen werden können. Die Einträge gehören zum gemeinsamen Abend, unabhängig von einzelnen Bingo-Boards und deren Abschluss.
+Unter der Rangliste kannst du pro Datum den **Gewinner der Smashung**, die Person unter **Schiss** (jeweils Daniel, Fabian oder Tim) und einen ganzzahligen **Schiss-Wert von 1 bis 10** eintragen. Das Datum ist frei wählbar, sodass auch ältere Abende nachgetragen werden können. Die Einträge gehören zum gemeinsamen Abend, unabhängig von einzelnen Bingo-Boards und deren Abschluss.
 
-Die Gesamtstatistik zählt die Smashung-Siege und „Größter Schiss“-Abende pro Spieler und zeigt den durchschnittlichen sowie den höchsten Schiss-Wert. Der Durchschnitt berücksichtigt nur die Abende, an denen die jeweilige Person eingetragen wurde. Der Verlauf zeigt die neuesten Daten zuerst; ein Klick auf ein Datum lädt den Eintrag zur Bearbeitung. Pro Datum gibt es genau einen gemeinsamen Eintrag in `smashBingoEvenings`. Korrekturen aktualisieren diesen Eintrag und dadurch auch die Statistik, ohne weitere Abende zu zählen.
+Die Gesamtstatistik zählt die Smashung-Siege und Schiss-Abende pro Spieler und zeigt den durchschnittlichen sowie den höchsten Schiss-Wert. Der Durchschnitt berücksichtigt nur die Abende, an denen die jeweilige Person eingetragen wurde. Der Verlauf zeigt die neuesten Daten zuerst; ein Klick auf ein Datum lädt den Eintrag zur Bearbeitung. Pro Datum gibt es genau einen gemeinsamen Eintrag in `smashBingoEvenings`. Korrekturen aktualisieren diesen Eintrag und dadurch auch die Statistik, ohne weitere Abende zu zählen.
 
 Speichern benötigt eine Live-Verbindung. Eingaben bleiben bei Verbindungsfehlern und beim Neuladen als lokaler Entwurf erhalten; gespeicherte Statistiken stehen als lokaler Cache zur Verfügung. Gleichzeitige Änderungen werden per Revision geprüft: Bei einem Konflikt **Gespeicherten Stand laden** wählen, die Eingaben prüfen und erneut speichern. Wiederholte Speicherversuche nach einer verlorenen Antwort erzeugen keine doppelten Einträge.
 
@@ -60,7 +60,7 @@ Speichern benötigt eine Live-Verbindung. Eingaben bleiben bei Verbindungsfehler
 
 Die vollständige Regeldatei basiert auf dem neuesten bereitgestellten Regeltext, einschließlich der 5- und 10-stelligen Schafkopf-Raumcodes und der privaten Kartenbewertungen. Alle bestehenden Regelblöcke sind gegenüber diesem Text unverändert; nur der eigene Spieleabend-Block wurde ergänzt. Die frühere lokale Regeldatei enthielt noch veraltete Schafkopf-Regeln und darf nicht als Grundlage für ein erneutes Veröffentlichen verwendet werden.
 
-Für das App-Update auch `evenings.js`, `evening-store.js` und alle vier neuen MP3-Dateien übertragen. Der Service-Worker-Cache wurde auf Version 16 angehoben.
+Für das App-Update auch `evenings.js`, `evening-store.js` und alle vier neuen MP3-Dateien übertragen. Der Service-Worker-Cache steht auf Version 17.
 
 ## Warum Firebase nötig ist
 

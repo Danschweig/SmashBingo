@@ -32,17 +32,7 @@
     </header>
 
     <main class="app-shell board-page">
-      <section class="hero compact-hero" aria-labelledby="pageTitle">
-        <div>
-          <p class="eyebrow">READY TO BRAWL?</p>
-          <h1 id="pageTitle">Euer Match.<br /><em>Euer Bingo.</em></h1>
-          <p class="hero-copy">Mischt den gemeinsamen Pool und macht aus jeder Runde ein Event.</p>
-        </div>
-        <div class="hero-badge" aria-hidden="true">
-          <span>★</span>
-          <strong>LET'S<br />GO!</strong>
-        </div>
-      </section>
+      <h1 class="sr-only">Smash Bingo</h1>
 
       <section class="board-panel board-only-panel" aria-labelledby="boardHeading">
         <div class="panel-heading board-heading">
@@ -120,7 +110,7 @@
             <h2 id="eveningHeading">Eure Abend-Statistik</h2>
           </div>
         </div>
-        <p class="leaderboard-note">Wer hat die Smashung gewonnen und wer hatte den größten Schiss? Ein Eintrag pro Datum, gemeinsam für alle Geräte.</p>
+        <p class="leaderboard-note">Wer hat die Smashung gewonnen und wer hatte Schiss? Ein Eintrag pro Datum, gemeinsam für alle Geräte.</p>
         <form id="eveningForm" class="evening-form">
           <fieldset id="eveningControls" class="evening-controls">
             <legend class="evening-legend">Spieleabend eintragen oder bearbeiten</legend>
@@ -133,7 +123,7 @@
                 <option>Daniel</option><option>Fabian</option><option>Tim</option>
               </select>
             </label>
-            <label for="eveningSchissPlayer">Größter Schiss
+            <label for="eveningSchissPlayer">Schiss
               <select id="eveningSchissPlayer" required>
                 <option value="">Namen wählen</option>
                 <option>Daniel</option><option>Fabian</option><option>Tim</option>
@@ -153,18 +143,18 @@
         <div class="evening-table-scroll" tabindex="0" role="region" aria-label="Gesamtstatistik aller Spieleabende">
           <table class="evening-table">
             <caption>Gesamtstatistik</caption>
-            <thead><tr><th scope="col">Name</th><th scope="col">Smashung gewonnen</th><th scope="col">Größter Schiss</th><th scope="col">Ø Schiss-Wert</th><th scope="col">Höchster Wert</th></tr></thead>
+            <thead><tr><th scope="col">Name</th><th scope="col">Smashung gewonnen</th><th scope="col">Schiss</th><th scope="col">Ø Schiss-Wert</th><th scope="col">Höchster Wert</th></tr></thead>
             <tbody id="eveningStats"></tbody>
           </table>
         </div>
-        <p class="leaderboard-note">Der Ø Schiss-Wert berücksichtigt nur Abende, an denen die Person „Größter Schiss“ war.</p>
+        <p class="leaderboard-note">Der Ø Schiss-Wert berücksichtigt nur Abende, an denen die Person unter „Schiss“ eingetragen wurde.</p>
         <details class="evening-history" open>
           <summary>Verlauf nach Datum</summary>
           <p id="eveningEmpty" class="leaderboard-note">Noch keine Spieleabende gespeichert.</p>
           <div id="eveningHistoryTable" class="evening-table-scroll" tabindex="0" role="region" aria-label="Gespeicherte Spieleabende" hidden>
             <table class="evening-table">
               <caption class="evening-legend">Spieleabende, neueste zuerst</caption>
-              <thead><tr><th scope="col">Datum · Bearbeiten</th><th scope="col">Gewinner der Smashung</th><th scope="col">Größter Schiss</th></tr></thead>
+              <thead><tr><th scope="col">Datum · Bearbeiten</th><th scope="col">Gewinner der Smashung</th><th scope="col">Schiss</th></tr></thead>
               <tbody id="eveningHistory"></tbody>
             </table>
           </div>
