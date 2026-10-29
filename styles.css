@@ -2078,6 +2078,70 @@ button {
 .field-target-hint { margin: 8px 0 0; color: var(--muted); font-size: 0.76rem; line-height: 1.4; }
 .counted-edit-form { display: grid; grid-template-columns: 1fr 36px 36px; align-items: end; }
 .counted-edit-form > .edit-field-input { grid-column: 1 / -1; }
+
+/* Shared evening results and dated history. */
+.evening-panel {
+  width: min(850px, 100%);
+  min-width: 0;
+  margin: 28px auto 0;
+  padding: clamp(18px, 4vw, 30px);
+  background: var(--surface);
+  border-top: 6px solid var(--red);
+  box-shadow: 7px 8px 0 rgba(0, 0, 0, 0.14);
+}
+.evening-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  min-width: 0;
+  margin: 22px 0 16px;
+  padding: 0;
+  border: 0;
+}
+.evening-legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.evening-controls label { min-width: 0; font-size: 0.85rem; font-weight: 800; }
+.evening-controls input,
+.evening-controls select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 10px;
+  color: var(--ink);
+  background: white;
+  border: 2px solid var(--line);
+  border-radius: 0;
+  font: inherit;
+  font-size: 1rem;
+}
+.evening-panel :focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.evening-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.evening-actions .primary-button { flex: 1 1 240px; width: auto; }
+.evening-actions .leaderboard-edit-button { flex: 1 1 200px; }
+.evening-feedback { min-height: 1.5em; margin: 14px 0 0; font-size: 0.85rem; font-weight: 700; overflow-wrap: anywhere; }
+.evening-table-scroll { max-width: 100%; overflow-x: auto; margin: 20px 0 12px; }
+.evening-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; }
+.evening-table caption { margin-bottom: 10px; text-align: left; font-size: 1rem; font-weight: 800; }
+.evening-table th,
+.evening-table td { padding: 12px 10px; border-bottom: 1px solid var(--line); }
+.evening-table thead th { color: var(--muted); font-size: 0.75rem; }
+.evening-table tbody th,
+.evening-table td { white-space: nowrap; }
+.evening-table tbody th:first-child,
+.evening-table td:first-child { padding-left: 0; }
+.evening-history { margin-top: 24px; }
+.evening-history summary { min-height: 44px; padding: 10px 0; font-weight: 800; cursor: pointer; }
+.evening-date-button { min-height: 44px; padding: 4px 0; color: var(--red-dark); background: none; border: 0; font-weight: 800; text-decoration: underline; }
+@media (max-width: 480px) {
+  .evening-controls { grid-template-columns: minmax(0, 1fr); }
+}
 .edit-field-target { display: block; width: 88px; min-height: 36px; padding: 5px 8px; border: 1px solid var(--line); font-size: 1rem; }
 .bingo-board.has-counted-fields { aspect-ratio: auto; }
 .bingo-cell.is-counted { min-height: 112px; }

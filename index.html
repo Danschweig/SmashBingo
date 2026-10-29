@@ -113,10 +113,68 @@
         <p class="leaderboard-note">Jede abgeschlossene Runde zählt. Eine fertige Linie = ein Bingo, erfüllter Bonus = ein zusätzliches Bingo.</p>
       </section>
 
+      <section class="evening-panel" aria-labelledby="eveningHeading">
+        <div class="panel-heading">
+          <div>
+            <p class="step-label"><span>03</span> Spieleabende</p>
+            <h2 id="eveningHeading">Eure Abend-Statistik</h2>
+          </div>
+        </div>
+        <p class="leaderboard-note">Wer hat die Smashung gewonnen und wer hatte den größten Schiss? Ein Eintrag pro Datum, gemeinsam für alle Geräte.</p>
+        <form id="eveningForm" class="evening-form">
+          <fieldset id="eveningControls" class="evening-controls">
+            <legend class="evening-legend">Spieleabend eintragen oder bearbeiten</legend>
+            <label for="eveningDate">Datum
+              <input id="eveningDate" type="date" min="2000-01-01" max="9999-12-31" required />
+            </label>
+            <label for="eveningWinner">Gewinner der Smashung
+              <select id="eveningWinner" required>
+                <option value="">Namen wählen</option>
+                <option>Daniel</option><option>Fabian</option><option>Tim</option>
+              </select>
+            </label>
+            <label for="eveningSchissPlayer">Größter Schiss
+              <select id="eveningSchissPlayer" required>
+                <option value="">Namen wählen</option>
+                <option>Daniel</option><option>Fabian</option><option>Tim</option>
+              </select>
+            </label>
+            <label for="eveningSchissScore">Schiss-Wert (1–10)
+              <input id="eveningSchissScore" type="number" min="1" max="10" step="1" inputmode="numeric" placeholder="1–10" required />
+            </label>
+          </fieldset>
+          <div class="evening-actions">
+            <button id="eveningSave" class="primary-button" type="submit" disabled>Spieleabend speichern</button>
+            <button id="eveningReload" class="leaderboard-edit-button" type="button" disabled>Gespeicherten Stand laden</button>
+          </div>
+        </form>
+        <p id="eveningFeedback" class="evening-feedback" role="status" aria-live="polite"></p>
+        <p id="eveningStatus" class="leaderboard-status" role="status" aria-live="polite">Spieleabende werden geladen …</p>
+        <div class="evening-table-scroll" tabindex="0" role="region" aria-label="Gesamtstatistik aller Spieleabende">
+          <table class="evening-table">
+            <caption>Gesamtstatistik</caption>
+            <thead><tr><th scope="col">Name</th><th scope="col">Smashung gewonnen</th><th scope="col">Größter Schiss</th><th scope="col">Ø Schiss-Wert</th><th scope="col">Höchster Wert</th></tr></thead>
+            <tbody id="eveningStats"></tbody>
+          </table>
+        </div>
+        <p class="leaderboard-note">Der Ø Schiss-Wert berücksichtigt nur Abende, an denen die Person „Größter Schiss“ war.</p>
+        <details class="evening-history" open>
+          <summary>Verlauf nach Datum</summary>
+          <p id="eveningEmpty" class="leaderboard-note">Noch keine Spieleabende gespeichert.</p>
+          <div id="eveningHistoryTable" class="evening-table-scroll" tabindex="0" role="region" aria-label="Gespeicherte Spieleabende" hidden>
+            <table class="evening-table">
+              <caption class="evening-legend">Spieleabende, neueste zuerst</caption>
+              <thead><tr><th scope="col">Datum · Bearbeiten</th><th scope="col">Gewinner der Smashung</th><th scope="col">Größter Schiss</th></tr></thead>
+              <tbody id="eveningHistory"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
       <section class="tier-list-panel" aria-labelledby="tierListHeading">
         <div class="tier-list-heading">
           <div>
-            <p class="step-label"><span>03</span> Meta-Check</p>
+            <p class="step-label"><span>04</span> Meta-Check</p>
             <h2 id="tierListHeading">Offizielle Tier List</h2>
           </div>
           <span class="tier-list-edition">2026</span>
@@ -189,10 +247,15 @@
     </dialog>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <audio id="singleBingoSound" class="triple-bingo-sound" src="assets/Marcell%20Davis%20Werbung%201%261.mp3" preload="auto" aria-hidden="true"></audio>
+    <audio id="fourBingoSound" class="triple-bingo-sound" src="assets/Avatar%20%E2%80%93%20Der%20Herr%20der%20Elemente%20Intro.mp3" preload="auto" aria-hidden="true"></audio>
+    <audio id="sixBingoSound" class="triple-bingo-sound" src="assets/metal%20pipe%20falling%20sound%20effect.mp3" preload="auto" aria-hidden="true"></audio>
+    <audio id="sevenBingoSound" class="triple-bingo-sound" src="assets/Toto%20Wolf%20%27%27%20NO%20mike%20%20NO%20NOO%20%23shortsvideo%20%20%23shorts%20%23f1%20-%20cesar.mp3" preload="auto" aria-hidden="true"></audio>
     <audio id="doubleBingoSound" class="triple-bingo-sound" src="assets/Double-Bingo.mp3" preload="auto" aria-hidden="true"></audio>
     <audio id="fiveBingoSound" class="triple-bingo-sound" src="assets/5-bingo.mp3" preload="auto" aria-hidden="true"></audio>
     <audio id="fullBoardSound" class="triple-bingo-sound" src="assets/Alle%20Voll.mp3" preload="auto" aria-hidden="true"></audio>
     <audio id="tripleBingoSound" class="triple-bingo-sound" src="assets/triple-bingo.mp3" preload="auto" aria-hidden="true"></audio>
     <script type="module" src="board.js"></script>
+    <script type="module" src="evenings.js"></script>
   </body>
 </html>

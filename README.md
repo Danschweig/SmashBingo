@@ -48,6 +48,20 @@ Korrekturen werden separat in `smashBingo/leaderboardAdjustments` gespeichert; d
 
 **Grenze der Passwortabfrage:** In dieser statischen App ist das Passwort eine Bedienungssperre und im ausgelieferten JavaScript einsehbar. Firebase prüft die Struktur der Korrekturen, aber keinen Admin-Login. Gegen gezielte Manipulationen wäre eine serverseitige Anmeldung erforderlich.
 
+## Spieleabende: Smashung und größter Schiss
+
+Unter der Rangliste kannst du pro Datum den **Gewinner der Smashung**, die Person mit dem **größten Schiss** (jeweils Daniel, Fabian oder Tim) und einen ganzzahligen **Schiss-Wert von 1 bis 10** eintragen. Das Datum ist frei wählbar, sodass auch ältere Abende nachgetragen werden können. Die Einträge gehören zum gemeinsamen Abend, unabhängig von einzelnen Bingo-Boards und deren Abschluss.
+
+Die Gesamtstatistik zählt die Smashung-Siege und „Größter Schiss“-Abende pro Spieler und zeigt den durchschnittlichen sowie den höchsten Schiss-Wert. Der Durchschnitt berücksichtigt nur die Abende, an denen die jeweilige Person eingetragen wurde. Der Verlauf zeigt die neuesten Daten zuerst; ein Klick auf ein Datum lädt den Eintrag zur Bearbeitung. Pro Datum gibt es genau einen gemeinsamen Eintrag in `smashBingoEvenings`. Korrekturen aktualisieren diesen Eintrag und dadurch auch die Statistik, ohne weitere Abende zu zählen.
+
+Speichern benötigt eine Live-Verbindung. Eingaben bleiben bei Verbindungsfehlern und beim Neuladen als lokaler Entwurf erhalten; gespeicherte Statistiken stehen als lokaler Cache zur Verfügung. Gleichzeitige Änderungen werden per Revision geprüft: Bei einem Konflikt **Gespeicherten Stand laden** wählen, die Eingaben prüfen und erneut speichern. Wiederholte Speicherversuche nach einer verlorenen Antwort erzeugen keine doppelten Einträge.
+
+**Zum Aktivieren:** Den gesamten Inhalt der aktuellen `firestore.rules` in der Firebase Console unter **Firestore Database → Rules** einfügen, die bisherigen Regeln vollständig ersetzen und **Veröffentlichen** wählen. Der Spieleabend-Bereich erlaubt wie die vorhandene Rangliste das Lesen und Bearbeiten ohne Anmeldung; Namen, Datum und Statistikwerte sind dadurch öffentlich zugänglich. Die Regeln begrenzen die Namen auf Daniel, Fabian und Tim und den Schiss-Wert auf ganze Zahlen von 1 bis 10. Revisionen schützen vor veralteten Änderungen; Löschungen sind gesperrt. Ohne veröffentlichte Regeln zeigt die App einen entsprechenden Hinweis und lässt keine Speicherung zu.
+
+Die vollständige Regeldatei basiert auf dem neuesten bereitgestellten Regeltext, einschließlich der 5- und 10-stelligen Schafkopf-Raumcodes und der privaten Kartenbewertungen. Alle bestehenden Regelblöcke sind gegenüber diesem Text unverändert; nur der eigene Spieleabend-Block wurde ergänzt. Die frühere lokale Regeldatei enthielt noch veraltete Schafkopf-Regeln und darf nicht als Grundlage für ein erneutes Veröffentlichen verwendet werden.
+
+Für das App-Update auch `evenings.js`, `evening-store.js` und alle vier neuen MP3-Dateien übertragen. Der Service-Worker-Cache wurde auf Version 16 angehoben.
+
 ## Warum Firebase nötig ist
 
 GitHub Pages liefert nur statische Dateien aus und besitzt keine Datenbank. `localStorage` gilt immer nur für einen einzelnen Browser. Damit mehrere Handys dieselbe Liste sehen, wird eine externe Datenbank benötigt. Diese Anwendung ist bereits für Cloud Firestore vorbereitet.
@@ -65,7 +79,20 @@ Ohne Firebase-Konfiguration läuft sie automatisch im lokalen Modus. Auf der Poo
 
 Die Firebase-Web-Konfiguration ist kein privater Server-Schlüssel und darf im Frontend stehen. Die mitgelieferten Regeln begrenzen den normalen Pool auf 200 sowie den Bonus-Pool auf 100 Einträge und verbieten das Löschen des Pool-Dokuments. Für die Rangliste erlauben sie neue, gültige Rundenergebnisse und ein separates Korrekturdokument. Änderungen und Löschungen von Rundenergebnissen sind gesperrt. Nach diesem Update müssen die geänderten Regeln erneut in der Firebase Console veröffentlicht werden, bevor das Leaderboard genutzt werden kann.
 
-Beim Erreichen von zwei Bingo-Linien spielen die ersten vier Sekunden von `assets/Double-Bingo.mp3`, bei drei Linien `assets/triple-bingo.mp3`, bei fünf Linien `assets/5-bingo.mp3` und beim vollständig markierten Board `assets/Alle Voll.mp3`. Das Bonus-Feld zählt separat. Überschreitet ein Klick mehrere Schwellen, hat das volle Board Vorrang, danach fünf, drei und zwei Linien. Beim Wiederherstellen des Boards bleiben die Sounds aus; fällt der Stand unter eine Schwelle, kann sie erneut ausgelöst werden.
+Die Bingo-Sounds richten sich nach vollständig markierten Linien (das Bonus-Feld zählt für die Sounds separat):
+
+| Bingo-Linien | Audio | Ausschnitt |
+| --- | --- | --- |
+| 1 | `Marcell Davis Werbung 1&1.mp3` | Erste 5 Sekunden |
+| 2 | `Double-Bingo.mp3` | Erste 4 Sekunden |
+| 3 | `triple-bingo.mp3` | Komplett |
+| 4 | `Avatar – Der Herr der Elemente Intro.mp3` | Erste 8 Sekunden |
+| 5 | `5-bingo.mp3` | Komplett |
+| 6 | `metal pipe falling sound effect.mp3` | Komplett |
+| 7 | `Toto Wolf '' NO mike  NO NOO #shortsvideo  #shorts #f1 - cesar.mp3` | Komplett |
+| Volles Board | `Alle Voll.mp3` | Komplett |
+
+Überschreitet ein Klick mehrere Schwellen, spielt nur die höchste neu erreichte Schwelle. Ein volles Board hat immer Vorrang. Beim Wiederherstellen bleiben die Sounds aus; fällt der Stand unter eine Schwelle, kann sie erneut ausgelöst werden. Die Dateinamen sind in den Audio- und Cache-URLs einschließlich der Hashtags und Sonderzeichen korrekt kodiert.
 
 Die Sounds starten direkt beim Antippen. Der Service Worker speichert die vollständigen MP3-Dateien für die Offline-Nutzung und beantwortet Byte-Range-Anfragen mit passenden Teilantworten. Netzwerk-Teilantworten (HTTP 206) werden nicht in den Cache geschrieben, da die Cache API dies ablehnt. Cache-Schreibfehler blockieren erfolgreiche Netzwerkantworten nicht mehr.
 
@@ -96,8 +123,12 @@ node tests/leaderboard.test.mjs
 node tests/leaderboard-editor.test.mjs
 node tests/field-progress.test.mjs
 node tests/pool-fields.test.mjs
+node tests/bingo-sounds.test.mjs
+node tests/evenings.test.mjs
 ```
 
 Die Tests prüfen Punkte und Gleichstände, doppelte beziehungsweise konkurrierende Speicherungen, Spielerwechsel vor der Abgabe, feste Zuordnung beim Speichern, abgeschlossene Boards, Wiederherstellung, Speicherausfälle und alte Boards mit simuliertem Firestore und DOM. Außerdem prüfen sie manuelle Korrekturen, konkurrierende Bearbeitungen, den Passwortdialog und das Ende der Freischaltung bei Speichern, Abbrechen und Zeitablauf. Ein Dateivergleich schützt die ursprünglichen Pool- und Schafkopf-Regeln. Die Firebase-Regeln und die Darstellung auf echten Handys müssen nach der Veröffentlichung zusätzlich geprüft werden.
 
 Die Zählertests prüfen Teilfortschritt, Plus/Minus-Grenzen, Bingo-Schwellen und Sounds, altes und neues Speicherformat, Neurollen, feste Ziele laufender Boards und gesperrte abgeschlossene Runden. Die Pooltests prüfen Anlegen, Bearbeiten, Varianten, doppelte Felder, Wiederherstellung und parallele Änderungen sowohl lokal als auch mit einer simulierten Firebase-Verbindung.
+
+Die Soundtests prüfen alle acht Zuordnungen, die Zeitgrenzen, die Priorität bei übersprungenen Schwellen, Wiederholungen, stummes Wiederherstellen, veraltete Playback-Callbacks und die Offline-Assetpfade. Die Spieleabendtests prüfen Datum, Namen, Wertebereich, Gesamtstatistik, getrennte Speicherung pro Datum, Korrekturen, wiederholte und konkurrierende Speicherungen, Entwürfe, Neuladen und Speicherausfälle. Das sind Tests mit simuliertem Firestore und DOM, keine Firebase-Emulatortests.

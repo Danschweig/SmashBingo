@@ -30,9 +30,13 @@ const elements = {
   confirmMessage: document.querySelector("#confirmDialogMessage"),
   confirmAccept: document.querySelector("#confirmDialogAccept"),
   sounds: {
+    single: document.querySelector("#singleBingoSound"),
     double: document.querySelector("#doubleBingoSound"),
     triple: document.querySelector("#tripleBingoSound"),
+    four: document.querySelector("#fourBingoSound"),
     five: document.querySelector("#fiveBingoSound"),
+    six: document.querySelector("#sixBingoSound"),
+    seven: document.querySelector("#sevenBingoSound"),
     full: document.querySelector("#fullBoardSound"),
   },
   toast: document.querySelector("#toast"),
@@ -426,9 +430,13 @@ function updateWinningLines(allowSound = false) {
   const boardIsFull = currentBoard.length > 0 && markedCells.size === currentBoard.length;
   if (allowSound) {
     if (boardIsFull && !boardWasFull) playBingoSound("full", "Ganzes Board voll!");
+    else if (winningLineCount < 7 && winningLines.length >= 7) playBingoSound("seven", "Siebenfach-Bingo!");
+    else if (winningLineCount < 6 && winningLines.length >= 6) playBingoSound("six", "Sechsfach-Bingo!");
     else if (winningLineCount < 5 && winningLines.length >= 5) playBingoSound("five", "Fünffach-Bingo!");
+    else if (winningLineCount < 4 && winningLines.length >= 4) playBingoSound("four", "Vierfach-Bingo!", 8);
     else if (winningLineCount < 3 && winningLines.length >= 3) playBingoSound("triple", "Dreifach-Bingo!");
     else if (winningLineCount < 2 && winningLines.length >= 2) playBingoSound("double", "Doppel-Bingo!", 4);
+    else if (winningLineCount < 1 && winningLines.length >= 1) playBingoSound("single", "Bingo!", 5);
   }
   winningLineCount = winningLines.length;
   boardWasFull = boardIsFull;

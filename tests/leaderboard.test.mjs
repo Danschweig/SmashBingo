@@ -173,18 +173,19 @@ await saving;
 assert.equal(slowSave.submitted[0].player, "Tim");
 console.log("PASS: validation, bonus scoring, ties, immutable records, concurrent retries, player corrections before submission, round locking, reload, failed-save recovery, and legacy boards.");
 
-// The fixture is the complete ruleset supplied by the user for the shared database.
-// Only the separate leaderboard blocks may be added to that baseline.
+// The new fixture is the latest complete ruleset supplied for the shared database.
+// All of it, especially the newer Schafkopf rules, must survive unchanged.
 const rules = (await fs.readFile(new URL("firestore.rules", root), "utf8")).replaceAll("\r\n", "\n");
-const baselineRules = (await fs.readFile(new URL("tests/fixtures/firestore-before-leaderboard.rules", root), "utf8")).replaceAll("\r\n", "\n");
+const baselineRules = (await fs.readFile(new URL("tests/fixtures/firestore-before-evenings.rules", root), "utf8")).replaceAll("\r\n", "\n");
 const leaderboardStart = rules.indexOf("    // Unveränderliche Rundenergebnisse");
+const eveningStart = rules.indexOf("    // Shared Smash evening results");
 const schafkopfStart = rules.indexOf("    // Gemeinsame Schafkopf-Räume.");
-assert(leaderboardStart > 0 && schafkopfStart > leaderboardStart);
-assert.equal(rules.slice(0, leaderboardStart) + rules.slice(schafkopfStart), baselineRules,
-  "Pool, Schafkopf, and default-deny rules must exactly match the user's original rules");
+assert(leaderboardStart > 0 && eveningStart > leaderboardStart && schafkopfStart > eveningStart);
+assert.equal(rules.slice(0, eveningStart) + rules.slice(schafkopfStart), baselineRules,
+  "All supplied Pool, leaderboard, Schafkopf, and default-deny rules must match the user's latest rules exactly");
 assert.equal((rules.match(/match \/schafkopfRooms\//g) || []).length, 1);
 assert.equal((rules.match(/match \/smashBingoRounds\//g) || []).length, 1);
-const leaderboardRules = rules.slice(leaderboardStart, schafkopfStart);
+const leaderboardRules = rules.slice(leaderboardStart, eveningStart);
 assert.equal((leaderboardRules.match(/\bmatch\b/g) || []).length, 2, "Only rounds and the correction document belong in leaderboard rules");
 assert.equal((rules.match(/match \/smashBingo\/leaderboardAdjustments/g) || []).length, 1);
 assert(leaderboardRules.includes("request.resource.data.revision == resource.data.revision + 1"));

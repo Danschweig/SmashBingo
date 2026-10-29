@@ -1,4 +1,4 @@
-const CACHE_NAME = "smash-bingo-v15";
+const CACHE_NAME = "smash-bingo-v16";
 const APP_FILES = [
   "./",
   "index.html",
@@ -7,6 +7,8 @@ const APP_FILES = [
   "board.js",
   "leaderboard-store.js",
   "leaderboard-editor.js",
+  "evening-store.js",
+  "evenings.js",
   "pool.js",
   "pool-store.js",
   "field-model.js",
@@ -18,6 +20,10 @@ const APP_FILES = [
   "assets/Double-Bingo.mp3",
   "assets/5-bingo.mp3",
   "assets/Alle%20Voll.mp3",
+  "assets/Marcell%20Davis%20Werbung%201%261.mp3",
+  "assets/Avatar%20%E2%80%93%20Der%20Herr%20der%20Elemente%20Intro.mp3",
+  "assets/metal%20pipe%20falling%20sound%20effect.mp3",
+  "assets/Toto%20Wolf%20%27%27%20NO%20mike%20%20NO%20NOO%20%23shortsvideo%20%20%23shorts%20%23f1%20-%20cesar.mp3",
 ];
 
 self.addEventListener("install", (event) => {

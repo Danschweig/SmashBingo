@@ -62,6 +62,28 @@ service cloud.firestore {
       }
     }
 
+    // Shared Smash evening results, isolated from rounds and Schafkopf.
+    match /smashBingoEvenings/{eveningDate} {
+      allow get, list: if true;
+      allow delete: if false;
+      allow create: if validEvening() && request.resource.data.revision == 1;
+      allow update: if validEvening()
+        && request.resource.data.revision == resource.data.revision + 1;
+
+      function validEvening() {
+        let value = request.resource.data;
+        return eveningDate.matches('^[2-9][0-9]{3}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+          && value.keys().hasAll(['date', 'winner', 'schissPlayer', 'schissScore', 'revision', 'updatedAt'])
+          && value.keys().hasOnly(['date', 'winner', 'schissPlayer', 'schissScore', 'revision', 'updatedAt'])
+          && value.date == eveningDate
+          && value.winner in ['Daniel', 'Fabian', 'Tim']
+          && value.schissPlayer in ['Daniel', 'Fabian', 'Tim']
+          && value.schissScore is int && value.schissScore >= 1 && value.schissScore <= 10
+          && value.revision is int && value.revision > 0 && value.revision <= 1000000000
+          && value.updatedAt == request.time;
+      }
+    }
+
     // Gemeinsame Schafkopf-Räume.
     match /schafkopfRooms/{roomId} {
       function signedIn() {
@@ -69,7 +91,7 @@ service cloud.firestore {
       }
 
       function validRoomCode() {
-        return roomId.matches('^[A-Z2-9]{5}$');
+        return roomId.matches('^([A-Z2-9]{5}|[A-Z2-9]{10})$');
       }
 
       function validRoomDocument() {
@@ -90,6 +112,37 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid;
       }
 
+      // Ein Freigabemarker darf nur zusammen mit einem neuen Spielergebnis
+      // entstehen. Bereits freigegebene Werte lassen sich nicht wieder geheim machen.
+      function validRatingRelease() {
+        let before = resource.data.state.get('completedDeals', {});
+        let after = request.resource.data.state.get('completedDeals', {});
+        return before is map && after is map
+          && (before == after || validNewRatingRelease(before, after));
+      }
+
+      function validNewRatingRelease(before, after) {
+        let rounds = request.resource.data.state.get('rounds', []);
+        let proof = request.resource.data.state.ratingRelease;
+        let last = rounds[proof.roundIndex];
+        return proof is map && proof.keys().hasOnly(['dealId', 'roundIndex'])
+          && proof.roundIndex is int && proof.roundIndex >= 0 && proof.roundIndex < rounds.size()
+          && proof.dealId == last.dealId
+          && last.dealId is string
+          && last.dealId.matches('^deal-[a-zA-Z0-9-]{10,80}$')
+          && last.id is int && last.id > 0
+          && last.typeId is string && last.typeId != 'kartenstrafe'
+          && last.typeCat in ['2vs2', 'solo1', 'solo2', 'ramsch']
+          && last.gewonnen is bool && last.deltas is map
+          && (last.get('spieler', null) in request.resource.data.state.players
+            || last.get('solist', null) in request.resource.data.state.players
+            || last.get('verlierer', null) in request.resource.data.state.players)
+          && last.get('cardPenalty', false) == false
+          && after.diff(before).affectedKeys().hasOnly([last.dealId])
+          && after.diff(before).addedKeys().hasAll([last.dealId])
+          && after[last.dealId] == last.id;
+      }
+
       allow create: if signedIn()
         && validRoomCode()
         && validRoomDocument()
@@ -97,10 +150,9 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      // Ein Raum kann nur mit bekanntem Raumcode geöffnet werden.
-      // Das Auflisten aller Räume bleibt gesperrt.
+      // Angemeldete App-Geraete koennen alle offenen Raeume finden und beitreten.
       allow get: if signedIn() && validRoomCode();
-      allow list: if false;
+      allow list: if signedIn();
 
       allow update: if signedIn()
         && validRoomCode()
@@ -108,10 +160,71 @@ service cloud.firestore {
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.revision == resource.data.revision + 1
+        && validRatingRelease()
         && request.resource.data.updatedAt == request.time;
 
       allow delete: if signedIn()
-        && request.auth.uid == resource.data.ownerId;
+        && validRoomCode();
+
+      // Verdeckte Werte sind getrennte Dokumente, niemals Teil von state.
+      // Bilder und Karten-IDs werden hier nicht angenommen. createdAt verhindert
+      // das Offenlegen alter Unterdokumente nach dem Wiederverwenden eines Raumcodes.
+      match /privateDealRatings/{dealId}/players/{slot} {
+        function room() {
+          return get(/databases/$(database)/documents/schafkopfRooms/$(roomId)).data;
+        }
+        function released() {
+          return room().state.get('completedDeals', {}).keys().hasAny([dealId]);
+        }
+        function currentGeneration() {
+          return resource.data.roomCreatedAt == room().createdAt;
+        }
+        function validPrivateRating() {
+          let value = request.resource.data;
+          let slots = {'0': 0, '1': 1, '2': 2, '3': 3, '4': 4};
+          return dealId.matches('^deal-[a-zA-Z0-9-]{10,80}$')
+            && slot in slots
+            && value.keys().hasAll(['ownerId','player','playerIndex','score','meta','roomCreatedAt','updatedAt'])
+            && value.keys().hasOnly(['ownerId','player','playerIndex','score','meta','roomCreatedAt','updatedAt'])
+            && value.ownerId == request.auth.uid
+            && value.playerIndex == slots[slot]
+            && value.playerIndex < room().state.players.size()
+            && value.player == room().state.players[value.playerIndex]
+            && value.score is number && value.score >= 1 && value.score <= 10
+            && value.meta is map
+            && value.meta.keys().hasAll(['method','algorithmVersion','rules'])
+            && value.meta.keys().hasOnly(['method','algorithmVersion','rules'])
+            && value.meta.method in ['automatic','manual']
+            && value.meta.algorithmVersion is string && value.meta.algorithmVersion.size() <= 80
+            && (value.meta.rules == null || validRatingRules(value.meta.rules))
+            && value.roomCreatedAt == room().createdAt
+            && value.updatedAt == request.time
+            && room().state.get('openDealId', null) == dealId
+            && !released();
+        }
+        function validRatingRules(rules) {
+          return rules is map
+            && rules.keys().hasOnly(['deck','sauspiel','hochzeit','wenz','farbwenz','geier','farbsolo','ramsch'])
+            && rules.deck == 'long'
+            && rules.hochzeit is bool && rules.wenz is bool
+            && rules.get('sauspiel', true) is bool
+            && rules.get('farbwenz', false) is bool
+            && rules.get('geier', false) is bool
+            && rules.get('farbsolo', false) is bool
+            && rules.get('ramsch', false) is bool;
+        }
+        allow get: if signedIn() && validRoomCode()
+          && (!exists(/databases/$(database)/documents/schafkopfRooms/$(roomId)/privateDealRatings/$(dealId)/players/$(slot))
+            || (currentGeneration() && (resource.data.ownerId == request.auth.uid || released())));
+        allow list: if signedIn() && validRoomCode() && currentGeneration()
+          && (resource.data.ownerId == request.auth.uid || released());
+        allow create: if signedIn() && validRoomCode() && validPrivateRating();
+        allow update: if signedIn() && validRoomCode() && validPrivateRating()
+          && (resource.data.roomCreatedAt != room().createdAt
+            || (resource.data.ownerId == request.auth.uid
+              && request.resource.data.playerIndex == resource.data.playerIndex));
+        allow delete: if false;
+      }
     }
 
     // Alles andere bleibt gesperrt.
